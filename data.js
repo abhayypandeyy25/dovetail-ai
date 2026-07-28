@@ -14,7 +14,7 @@ export const COA=[
  ['4000','Platform Subscriptions','R'],['4100','Professional Services','R'],
  ['5000','Cloud Hosting (COGS)','C'],['5100','Implementation Labour (COGS)','C'],
  ['6000','Salaries & Benefits','X'],['6100','Rent','X'],['6200','Software & Tools','X'],['6300','Professional Fees','X'],
- ['6400','Telephone','X'],['6500','Travel','X'],['6600','Insurance','X'],['6700','Office Supplies','X'],['6900','Depreciation','X'],['6950','Bank Charges','X']
+ ['6400','Telephone','X'],['6500','Travel','X'],['6600','Insurance','X'],['6700','Office Supplies','X'],['6800','Marketing & Printing','X'],['6900','Depreciation','X'],['6950','Bank Charges','X']
 ].map(a=>({n:a[0],name:a[1],t:a[2]}));
 export const acctName=n=>{const a=COA.find(x=>x.n===n);return a?a.name:n};
 export const VENDORS={
@@ -195,3 +195,104 @@ export const TRACE=[
  {step:'Journal entry',label:'DR 1100 34,398 / CR 4000 32,760 / CR 2100 1,638',detail:'Posted automatically on approval · audit entry #A-1042',date:'2026-07-02'},
  {step:'Payment',label:'Partial receipt 1,240 CAD · 14 Jul 2026',detail:'Bank feed line auto-matched (76% — confirmed by human) · balance open',date:'2026-07-14'},
  {step:'Confirmation',label:'Third-party confirmation — sent',detail:'Balance confirmation emailed to Meridian AP 20 Jul · awaiting response',date:'2026-07-20'}];
+// ==================== AI-NATIVE MODE DATA ====================
+// Agent activity feed. rel = minutes before "now" at page load; the liveness
+// ticker reveals items with rel<0 one per tick as "just now".
+export const AI_FEED=[
+ {agent:'AP Agent',icon:'AP',verb:'Auto-posted',obj:'Bell Canada #1263 · 1,304.10 CAD',detail:'98% · policy P-1 · matches 14 prior bills',rel:184,hash:true},
+ {agent:'Treasury Agent',icon:'TR',verb:'Reconciled',obj:'RBC operating feed · 12 lines',detail:'all matched on reference + amount',rel:162,hash:true},
+ {agent:'AP Agent',icon:'AP',verb:'Blocked duplicate',obj:'Bell Canada #1245 (re-entry attempt)',detail:'policy P-6 · original posted 12 Jun',rel:141,hash:true},
+ {agent:'Controller Agent',icon:'CO',verb:'Posted',obj:'Monthly depreciation · 2,100 CAD',detail:'straight-line schedule, no additions',rel:120,hash:true},
+ {agent:'AR/Collections Agent',icon:'AR',verb:'Drafted',obj:'reminder — Lakeside Pulp & Paper',detail:'16 days late · awaiting your wording approval',rel:96,hash:false},
+ {agent:'Compliance Agent',icon:'CM',verb:'Tax-coded',obj:'9 documents',detail:'GST 5% · 0 overrides',rel:74,hash:true},
+ {agent:'Treasury Agent',icon:'TR',verb:'Flagged',obj:'e-transfer 1,240 — "MERIDIAN JULY"',detail:'76% match to INV-202607-100 · routed to you',rel:58,hash:true},
+ {agent:'AP Agent',icon:'AP',verb:'Escalated',obj:'Delta Freight DF-0042 · 3,980 CAD',detail:'no PO, no prior pattern · policy P-4 · has a question',rel:41,hash:true},
+ {agent:'Audit Agent',icon:'AU',verb:'Linked evidence',obj:'6 items → controls C-01, C-06, C-13',detail:'auto-collected from today’s postings',rel:29,hash:true},
+ {agent:'Controller Agent',icon:'CO',verb:'Advanced close',obj:'Subledger stream 58% → 62%',detail:'AP queue cleared except 3 review items',rel:12,hash:true},
+ {agent:'Treasury Agent',icon:'TR',verb:'Re-ran',obj:'13-week cash forecast',detail:'trough unchanged · covenant headroom 1.9×',rel:-1,hash:true},
+ {agent:'Compliance Agent',icon:'CM',verb:'Verified',obj:'sales-tax coding on 4 new bills',detail:'0 exceptions',rel:-2,hash:true},
+ {agent:'AR/Collections Agent',icon:'AR',verb:'Matched',obj:'TrueNorth receipt 26,724 CAD',detail:'reference on remittance · 99%',rel:-3,hash:true},
+ {agent:'Audit Agent',icon:'AU',verb:'Ran hash-chain check',obj:'1,412 entries',detail:'chain intact ✓',rel:-4,hash:true},
+ {agent:'AP Agent',icon:'AP',verb:'Coded',obj:'Staples Business ST-31002 · 214.60 CAD',detail:'96% · queued to auto-post',rel:-5,hash:true},
+ {agent:'Controller Agent',icon:'CO',verb:'Drafted',obj:'July accrual journals (3)',detail:'ready for your review tonight',rel:-6,hash:false}];
+// Unified human decision queue. srcKind/srcId write to the same done-lists Classic uses.
+export const AI_DECISIONS=[
+ {id:'D1',srcKind:'ap',srcId:'B12',conf:64,title:'Delta Freight DF-0042 · 3,980 CAD',agent:'AP Agent',
+  ask:'No PO and the line items don’t match any prior pattern. Is this project freight or an office-move cost?',
+  policy:'P-4 — Any bill with no PO and no prior vendor pattern comes to a human.',
+  options:[{key:'5100',label:'5100 · Project freight — Meridian Deploy'},{key:'6700',label:'6700 · Office move'}],
+  evidence:['Bill of lading references "Meridian site, Hamilton" — matches the Meridian Deploy project address','Delivery window matches contractor mobilisation (bill MS-1188)','No office-move ticket found in the period'],
+  recommend:'I’d code this to 5100 Implementation Labour — project freight for Meridian Deploy. The lading reference matches the project site. 64% confident, so it’s your call.',
+  impact:'Approving adds CAD 3,980 to Meridian Deploy project cost and clears the last AP escalation blocking the subledger close stream.',
+  learn:{rule:'R-017',text:'Delta Freight Services + project reference on lading → 5100 Implementation Labour, project Meridian Deploy.'}},
+ {id:'D2',srcKind:'ap',srcId:'B09',conf:88,title:'Maple Systems MS-1188 · 7,770 CAD',agent:'AP Agent',
+  ask:'Contractor hours are 22% above June. 3-way match: PO ✓ · receipt ✓ · price +22%.',
+  policy:'P-3 — PO-backed bills with a price variance above 10% need a human (control C-03).',
+  options:null,
+  evidence:['PO-2214 rate unchanged — the variance is hours, not rate','Site log: 41 extra contractor hours w/c 14 Jul on Meridian Deploy','Project manager note: rollout running ahead of schedule'],
+  recommend:'The hours are real and tie to the site log — timing, not leakage. I’d approve and expect August to come in under plan.',
+  impact:'Approving clears control exception C-03 and unblocks the subledger close stream.'},
+ {id:'D3',srcKind:'rec',srcId:'R1',conf:76,title:'Unmatched receipt · 1,240 CAD — "MERIDIAN JULY"',agent:'Treasury Agent',
+  ask:'Looks like a Meridian Foods payment, but no open invoice matches the amount. Partial payment of INV-202607-100?',
+  policy:'P-5 — Cash applications below 90% match confidence need a human.',
+  options:null,
+  evidence:['Sender account matches Meridian Foods’ registered bank details','INV-202607-100 (32,760 CAD) is open; 1,240 matches no line','Meridian AP contact emailed 13 Jul about a "first instalment"'],
+  recommend:'Apply as a partial payment against INV-202607-100 and let collections follow up on the balance.',
+  impact:'Applying clears the oldest reconciliation exception; AR aging updates and the bank-rec stream moves to 95%.'}];
+// The learned-rule follow-up bill that arrives after the DF-0042 decision.
+export const AI_FOLLOWUP={id:'D4',srcKind:'ap',srcId:'B13',conf:96,title:'Delta Freight DF-0057 · 2,140 CAD',agent:'AP Agent',
+ ask:null,auto:true,rule:'R-017',
+ note:'Coded 5100 · Meridian Deploy — applied rule R-017, learned from your decision on 28 Jul.'};
+// Continuous-close workstreams.
+export const CLOSE_TASKS=[
+ {key:'sub',label:'Subledgers',agent:'AP',pct:78,blocker:'MS-1188 price variance awaiting decision',blockId:'D2'},
+ {key:'rec',label:'Bank rec',agent:'TR',pct:93,blocker:'Unidentified 3,980 deposit escalated',blockId:null},
+ {key:'pay',label:'Payroll',agent:'CO',pct:100,blocker:null,blockId:null},
+ {key:'acc',label:'Accruals',agent:'CO',pct:40,blocker:null,blockId:null,note:'drafting tonight'},
+ {key:'ic',label:'Intercompany',agent:'CO',pct:100,blocker:null,blockId:null,note:'CA↔IN, CA↔US matched to 0.00'},
+ {key:'rev',label:'Review & attest',agent:'AU',pct:35,blocker:'CFO attestation C-12 pending',blockId:null}];
+// Plain-English policy constitution the agents obey.
+export const POLICIES=[
+ {id:'P-1',group:'Autonomy',text:'Post bills automatically above 95% confidence — always logged, never silent.',ctl:'C-01',fired:'39 auto-posts this month',editable:true},
+ {id:'P-2',group:'Autonomy',text:'Below 80% confidence, stop and ask a human a specific question.',ctl:'C-15',fired:'1 escalation (Delta Freight DF-0042)'},
+ {id:'P-3',group:'Approvals',text:'PO-backed bills with a price variance above 10% need a human.',ctl:'C-03',fired:'1 held (MS-1188, +22%)'},
+ {id:'P-4',group:'Approvals',text:'Any bill with no PO and no prior vendor pattern comes to a human.',ctl:'C-02',fired:'Delta Freight escalated under this rule, 22 Jul 14:03'},
+ {id:'P-5',group:'Approvals',text:'Payments above CAD 10,000, new vendor bank details, and anything sent to a customer always need a human.',ctl:'C-05',fired:'2 bank-detail changes dual-approved'},
+ {id:'P-6',group:'Controls',text:'Never post the same invoice number twice for a vendor.',ctl:'C-01',fired:'3 duplicates blocked, incl. Bell #1245'},
+ {id:'P-7',group:'Controls',text:'Every cash account reconciles continuously; unexplained items over CAD 1,000 escalate same-day.',ctl:'C-06',fired:'2 items escalated this month'},
+ {id:'P-8',group:'Controls',text:'Agents never act outside this document. Changes to it are themselves logged immutably.',ctl:'C-15',fired:'0 out-of-mandate actions ever'}];
+// Firm memory: learned rules ledger.
+export const RULES=[
+ {id:'R-016',text:'Second AWS invoice in a month → check for new sub-account before posting.',src:'Learned from your question, 21 Jul 2026',applied:1},
+ {id:'R-014',text:'Harbour Print Co. → 6800 Marketing & Printing, dept Sales.',src:'Learned from S. Patel’s edit, 14 Jul 2026',applied:3},
+ {id:'R-012',text:'Gusto invoices are software fees, not payroll cost.',src:'Learned from your correction, 30 Jun 2026',applied:2},
+ {id:'R-009',text:'Bell one-time installs below the cap threshold stay in 6400 Telephone.',src:'Learned from the #1245 review, 12 Jun 2026',applied:2},
+ {id:'R-007',text:'Meridian remittances may arrive as instalments — match partials to the oldest open invoice.',src:'Learned from Treasury exception, May 2026',applied:4},
+ {id:'R-004',text:'Contractor bills tagged to a project site code → that project’s 5100, not overhead.',src:'Learned from month-end reclass, Apr 2026',applied:11},
+ {id:'R-002',text:'DLF Cyber City rent is fixed — any variance means a service charge line, split it out.',src:'Learned from A. Sharma’s edit, Mar 2026',applied:5}];
+export const MEMORY_STATS={rules:47,accuracy:96.2,accuracyStart:81,exceptionsNow:9,exceptionsStart:31,months:14,
+ trend:[['Feb',81],['Mar',85],['Apr',88.5],['May',91],['Jun',94],['Jul',96.2]],
+ exTrend:[['Feb',31],['Mar',26],['Apr',21],['May',16],['Jun',12],['Jul',9]],
+ reflections:[
+  {icon:'AP',name:'AP Agent',text:'I no longer need review for recurring Sun Life premiums — 6 straight approvals.'},
+  {icon:'TR',name:'Treasury Agent',text:'Meridian pays in instalments; I now check partials against their oldest invoice first.'},
+  {icon:'CO',name:'Controller Agent',text:'I mis-grouped the June accrual reversals once; I now post them as a single batch with one reference.'}]};
+// Anonymized network benchmarks.
+export const BENCHMARKS=[
+ {label:'Close speed',you:3.1,youLabel:'3.1 days',median:5.4,medianLabel:'5.4 days',lo:2.2,hi:9,better:'low',driver:'Your close is faster because 91% of reconciliations auto-match.'},
+ {label:'DSO (days sales outstanding)',you:34,youLabel:'34 days',median:41,medianLabel:'41 days',lo:24,hi:62,better:'low',driver:'Reminders go out the day an invoice turns overdue — network median is day 9.'},
+ {label:'Duplicates caught pre-payment',you:3,youLabel:'3 this month',median:1,medianLabel:'1',lo:0,hi:5,better:'high',driver:'2 of 3 were caught by a pattern first seen at other Dovetail companies.'}];
+// WhatsApp approval replay for bill B07 (Bell #1245).
+export const WHATSAPP_THREAD=[
+ {who:'dv',text:'Bill from Bell Canada · #1245 · 651.00 CAD\nOne-time phone-system install · coded 6400 Telephone · 96%\nApprove?',time:'3 Jul, 08:09',buttons:['✓ Approve','Hold']},
+ {who:'user',text:'✓ Approve',time:'3 Jul, 08:12'},
+ {who:'dv',text:'Approved — payment scheduled for today’s run.',time:'3 Jul, 08:12'},
+ {who:'dv',text:'Bank confirmation received — bill marked Paid ✓',time:'3 Jul, 16:40'},
+ {who:'receipt',text:'Receipt #A-1067 written to trust ledger',time:'3 Jul, 16:40'}];
+// Sandbox simulation: delay Maple Systems payment two weeks.
+export const SIM_MAPLE={
+ title:'Simulation — delay Maple Systems payment (7,770 CAD) by two weeks',
+ steps:['Reading vendor terms — MS-1188, net 30, 2% early-pay discount','Rebuilding the 13-week cash curve in a sandbox','Checking loan covenant — current ratio ≥ 1.25×','Weighing discount loss vs cash benefit'],
+ curve:[{label:'Wk 1',now:512,sim:512},{label:'Wk 2',now:498,sim:506},{label:'Wk 3',now:495,sim:495},{label:'Wk 4',now:507,sim:507}],
+ findings:[['Cash trough (wk 2)','improves by 7.8k CAD'],['Covenant — current ratio','2.4× either way — no risk'],['Early-pay discount lost','−155 CAD'],['Vendor relationship','terms allow net 30 — no breach']],
+ verdict:'Recommend paying on time: the discount is worth more than the cash benefit, and the covenant has ample headroom either way. This ran in a sandbox — the ledger was not touched.'};

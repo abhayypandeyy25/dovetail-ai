@@ -27,6 +27,7 @@ input{font-family:Inter,system-ui,sans-serif}
 </style>
 </helmet>
 <div style="display:flex;height:100vh;overflow:hidden;background:#F4F7FC">
+  <sc-if value="{{ isClassic }}" hint-placeholder-val="{{ true }}">
   <!-- ============ SIDEBAR ============ -->
   <nav style="width:216px;flex:none;background:#12284B;color:#fff;display:flex;flex-direction:column;overflow-y:auto">
     <div style="padding:18px 16px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.08)">
@@ -60,6 +61,10 @@ input{font-family:Inter,system-ui,sans-serif}
       <select value="{{ persona }}" onChange="{{ setPersona }}" style="height:32px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:12.5px;padding:0 8px;color:#12284B;font-weight:600;cursor:pointer">
         <sc-for list="{{ personaOpts }}" as="po" hint-placeholder-count="6"><option value="{{ po }}">{{ po }}</option></sc-for>
       </select>
+      <div style="height:32px;border:1px solid #d7dfec;border-radius:8px;display:flex;overflow:hidden" title="Same ledger. Same controls. Different cockpit.">
+        <button style="border:none;background:#12284B;color:#fff;font-size:11.5px;font-weight:700;padding:0 11px;cursor:pointer">Classic</button>
+        <button onClick="{{ goAI }}" style="border:none;background:#fff;color:#0d7a6d;font-size:11.5px;font-weight:700;padding:0 11px;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(45,212,191,.35)">✦ AI-native</button>
+      </div>
       <button onClick="{{ toggleAsk }}" style="height:34px;border:none;border-radius:8px;background:linear-gradient(135deg,#2DD4BF,#22b3a1);color:#0c2d29;font-weight:700;font-size:12.5px;padding:0 14px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(45,212,191,.4)">✦ Ask Dovetail</button>
     </header>
     <!-- content -->
@@ -67,9 +72,12 @@ input{font-family:Inter,system-ui,sans-serif}
       <!-- ============ DASHBOARD ============ -->
       <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
         <div style="animation:dvfade .25s ease">
-          <div style="margin-bottom:16px">
-            <div style="font-family:Fraunces,serif;font-size:22px;font-weight:600;color:#12284B">{{ dashGreeting }}</div>
-            <div style="font-size:13px;color:#5B6472;margin-top:3px">{{ dashSub }}</div>
+          <div style="margin-bottom:16px;display:flex;align-items:flex-end;gap:12px">
+            <div style="flex:1">
+              <div style="font-family:Fraunces,serif;font-size:22px;font-weight:600;color:#12284B">{{ dashGreeting }}</div>
+              <div style="font-size:13px;color:#5B6472;margin-top:3px">{{ dashSub }}</div>
+            </div>
+            <button onClick="{{ goAI }}" style="border:1px solid rgba(45,212,191,.5);background:rgba(45,212,191,.08);color:#0d7a6d;border-radius:8px;font-size:11.5px;font-weight:700;padding:7px 12px;cursor:pointer;flex:none">✦ See this in AI-native mode →</button>
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
             <sc-for list="{{ dashTiles }}" as="tl" hint-placeholder-count="4">
@@ -251,7 +259,7 @@ input{font-family:Inter,system-ui,sans-serif}
                 <span style="flex:none;width:44px;text-align:center;background:{{ b.chipBg }};color:{{ b.chipFg }};font-size:10.5px;font-weight:700;border-radius:5px;padding:3px 0">{{ b.conf }}%</span>
                 <span style="flex:1;min-width:0">
                   <span style="font-size:12.5px;font-weight:600;color:#222">{{ b.vendor }} · #{{ b.invno }}</span>
-                  <sc-if value="{{ b.note }}" hint-placeholder-val="{{ false }}"><span style="margin-left:7px;background:rgba(30,122,70,.1);color:#1E7A46;font-size:9.5px;font-weight:700;border-radius:4px;padding:2px 6px">✓ {{ b.note }}</span></sc-if>
+                  <sc-if value="{{ b.note }}" hint-placeholder-val="{{ false }}"><button onClick="{{ b.noteGo }}" title="Replay the WhatsApp approval" style="margin-left:7px;border:none;background:rgba(30,122,70,.1);color:#1E7A46;font-size:9.5px;font-weight:700;border-radius:4px;padding:2px 6px;cursor:pointer">✓ {{ b.note }} ▸</button></sc-if>
                   <span style="display:block;font-size:11px;color:#5B6472;margin-top:2px">{{ b.line2 }}</span>
                   <sc-if value="{{ b.match }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:10.5px;color:#C77F0A;margin-top:2px;font-weight:600">{{ b.match }}</span></sc-if>
                 </span>
@@ -729,6 +737,471 @@ input{font-family:Inter,system-ui,sans-serif}
       <div id="screen-end" style="display:none"></div>
     </main>
   </div>
+  </sc-if>
+  <!-- ==================== AI-NATIVE MODE ==================== -->
+  <sc-if value="{{ isAI }}" hint-placeholder-val="{{ false }}">
+  <nav style="width:200px;flex:none;background:#0B1B33;color:#fff;display:flex;flex-direction:column;animation:dvslide .3s ease">
+    <div style="padding:18px 16px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2DD4BF,#1F4E79);display:grid;place-items:center;font-weight:700;font-size:14px;color:#12284B">D</div>
+      <div>
+        <div style="font-family:Fraunces,serif;font-size:17px;font-weight:600;letter-spacing:.2px">Dovetail AI</div>
+        <div style="font-size:9.5px;color:#2DD4BF;letter-spacing:.5px;text-transform:uppercase">✦ AI-native mode</div>
+      </div>
+    </div>
+    <div style="padding:10px 8px;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ aiNav }}" as="an" hint-placeholder-count="4">
+        <button onClick="{{ an.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 10px;border:none;border-radius:7px;cursor:pointer;font-size:13px;background:{{ an.bg }};color:{{ an.fg }};font-weight:{{ an.fw }}">
+          <span style="width:18px;text-align:center;font-size:13px;opacity:.85">{{ an.icon }}</span>{{ an.label }}
+          <sc-if value="{{ an.badge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;background:#2DD4BF;color:#12284B;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px">{{ an.badge }}</span></sc-if>
+        </button>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;padding:12px 12px 14px;border-top:1px solid rgba(255,255,255,.08)">
+      <button onClick="{{ goClassic }}" style="width:100%;border:1px solid rgba(255,255,255,.25);background:transparent;color:#c6d2e4;border-radius:7px;font-size:11.5px;font-weight:600;padding:7px;cursor:pointer;margin-bottom:10px">⌂ Classic mode</button>
+      <div style="font-size:11px;color:#8fa3c0;line-height:1.5">Same ledger. Same controls.<br><span style="color:#2DD4BF;font-weight:600">Different cockpit.</span></div>
+    </div>
+  </nav>
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <header style="flex:none;height:56px;background:#fff;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:10px;padding:0 18px">
+      <div style="height:32px;border:1px solid #d7dfec;border-radius:8px;display:flex;overflow:hidden;flex:none" title="Same ledger. Same controls. Different cockpit.">
+        <button onClick="{{ goClassic }}" style="border:none;background:#fff;color:#5B6472;font-size:11.5px;font-weight:700;padding:0 11px;cursor:pointer">Classic</button>
+        <button style="border:none;background:#12284B;color:#2DD4BF;font-size:11.5px;font-weight:700;padding:0 11px;cursor:pointer;box-shadow:0 0 8px rgba(45,212,191,.5)">✦ AI-native</button>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;gap:7px;max-width:560px;margin:0 auto;height:36px;border:1px solid rgba(45,212,191,.5);border-radius:10px;background:rgba(45,212,191,.05);padding:0 12px;box-shadow:0 1px 4px rgba(45,212,191,.15)">
+        <span style="color:#0d7a6d;font-size:13px">✦</span>
+        <input value="{{ aiIntent }}" onChange="{{ aiIntentType }}" onKeyDown="{{ aiIntentKey }}" placeholder="Ask, command, or simulate…  (try: why is telephone up · simulate delaying Maple payment · close)" style="flex:1;border:none;background:transparent;outline:none;font-size:12.5px;color:#12284B">
+        <span style="font-size:10px;color:#8fa3c0;border:1px solid #d7dfec;border-radius:4px;padding:1px 5px">⌘K</span>
+      </div>
+      <select value="{{ entity }}" onChange="{{ setEntity }}" style="height:32px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:12px;padding:0 8px;color:#222;cursor:pointer;flex:none">
+        <sc-for list="{{ entityOpts }}" as="eo2" hint-placeholder-count="4"><option value="{{ eo2.id }}">{{ eo2.label }}</option></sc-for>
+      </select>
+      <select value="{{ persona }}" onChange="{{ setPersona }}" style="height:32px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:12px;padding:0 8px;color:#12284B;font-weight:600;cursor:pointer;flex:none">
+        <sc-for list="{{ personaOpts }}" as="po2" hint-placeholder-count="6"><option value="{{ po2 }}">{{ po2 }}</option></sc-for>
+      </select>
+    </header>
+    <main style="flex:1;overflow-y:auto;padding:20px 22px">
+      <!-- AI:MISSION -->
+      <sc-if value="{{ isAiMission }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <!-- briefing band -->
+          <div style="display:grid;grid-template-columns:1.7fr 1fr;gap:12px;margin-bottom:14px;align-items:stretch">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:16px 20px">
+              <div style="font-family:Fraunces,serif;font-size:20px;font-weight:600;color:#12284B;margin-bottom:8px">{{ aiGreet }}</div>
+              <div style="font-size:13px;color:#222;line-height:1.9">
+                <sc-for list="{{ aiBriefParts }}" as="bp" hint-placeholder-count="5">
+                  <span>{{ bp.text }}</span><sc-if value="{{ bp.chip }}" hint-placeholder-val="{{ false }}"><button onClick="{{ bp.go }}" style="border:none;background:rgba(45,212,191,.14);color:#0d7a6d;border-radius:5px;font-size:11px;font-weight:700;padding:1px 7px;cursor:pointer;margin:0 3px">{{ bp.chip }}</button></sc-if>
+                </sc-for>
+              </div>
+            </div>
+            <button onClick="{{ aiBenchOpen }}" style="text-align:left;background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:14px 16px;cursor:pointer">
+              <div style="font-size:11.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:9px">How you compare — Dovetail network</div>
+              <sc-for list="{{ aiBenchRows }}" as="bm" hint-placeholder-count="3">
+                <div style="margin-bottom:8px">
+                  <div style="display:flex;font-size:11.5px;margin-bottom:3px"><span style="color:#222;font-weight:600">{{ bm.label }}</span><span style="margin-left:auto;color:#12284B;font-weight:700">{{ bm.youLabel }}</span><span style="color:#8fa3c0;margin-left:7px">vs {{ bm.medianLabel }} median</span></div>
+                  <div style="position:relative;height:6px;background:#eef2f8;border-radius:3px"><span style="position:absolute;top:0;bottom:0;left:{{ bm.bandL }};width:{{ bm.bandW }};background:#dfe7f2;border-radius:3px"></span><span style="position:absolute;top:-2px;left:{{ bm.youPos }};width:10px;height:10px;border-radius:50%;background:#2DD4BF;border:2px solid #fff;box-shadow:0 0 0 1px #2DD4BF"></span></div>
+                </div>
+              </sc-for>
+              <div style="font-size:10px;color:#8fa3c0;margin-top:6px">Anonymized across 41 similar companies · your data never leaves your tenant identified</div>
+            </button>
+          </div>
+          <!-- simulation artifact -->
+          <sc-if value="{{ aiSimOn }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid rgba(45,212,191,.45);border-radius:12px;padding:16px 20px;margin-bottom:14px;animation:dvfade .25s ease">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <span style="background:#2DD4BF;color:#0c2d29;font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px">SANDBOX · Treasury Agent</span>
+                <b style="font-size:13px;color:#12284B">{{ aiSimTitle }}</b>
+                <button onClick="{{ aiSimClose }}" style="margin-left:auto;border:none;background:#F4F7FC;border-radius:6px;width:24px;height:24px;cursor:pointer;color:#5B6472">✕</button>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:16px">
+                <div>
+                  <sc-for list="{{ aiSimSteps }}" as="st" hint-placeholder-count="4">
+                    <div style="display:flex;gap:8px;font-size:12px;padding:4px 0;align-items:center;color:{{ st.color }}"><span style="width:16px;text-align:center">{{ st.mark }}</span>{{ st.text }}</div>
+                  </sc-for>
+                  <sc-if value="{{ aiSimDone }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px;border-top:1px dashed #e3e9f2;padding-top:8px">
+                      <sc-for list="{{ aiSimFinds }}" as="fd" hint-placeholder-count="4">
+                        <div style="display:flex;font-size:11.5px;padding:2px 0"><span style="color:#5B6472">{{ fd.k }}</span><span style="margin-left:auto;font-weight:700;color:#12284B">{{ fd.v }}</span></div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+                <div>
+                  <div style="font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Cash curve (CAD k) — <span style="color:#8fa3c0">■ current</span> <span style="color:#0d7a6d">■ simulated</span></div>
+                  <sc-for list="{{ aiSimCurve }}" as="cv" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;font-size:11px">
+                      <span style="width:36px;color:#5B6472">{{ cv.label }}</span>
+                      <span style="flex:1"><span style="display:block;height:8px;border-radius:3px;background:#8fa3c0;width:{{ cv.nowPct }};margin-bottom:2px"></span><span style="display:block;height:8px;border-radius:3px;background:#2DD4BF;width:{{ cv.simPct }}"></span></span>
+                      <span style="width:70px;text-align:right;font-variant-numeric:tabular-nums;color:#12284B;font-weight:600">{{ cv.val }}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{ aiSimDone }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:8px;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.35);border-radius:8px;padding:9px 12px;font-size:12px;color:#12284B;line-height:1.5;animation:dvfade .3s ease">✦ {{ aiSimVerdict }}</div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <!-- decision queue -->
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:9px">
+            <div style="font-size:14px;font-weight:700;color:#12284B">Needs you</div>
+            <div style="font-size:11.5px;color:#5B6472">{{ aiQueueCount }} — everything else ran on policy and is receipted below</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:11px;margin-bottom:16px">
+            <sc-for list="{{ aiQueue }}" as="q" hint-placeholder-count="3">
+              <div style="background:{{ q.bg }};border:1px solid {{ q.bd }};border-radius:12px;padding:13px 15px;display:flex;flex-direction:column;gap:7px;animation:dvfade .25s ease">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="background:{{ q.chipBg }};color:{{ q.chipFg }};font-size:10.5px;font-weight:700;border-radius:5px;padding:2px 7px">{{ q.conf }}%</span>
+                  <b style="font-size:12.5px;color:#12284B">{{ q.title }}</b>
+                </div>
+                <div style="font-size:11.5px;color:#5B6472;line-height:1.5;flex:1">{{ q.sub }}</div>
+                <sc-if value="{{ q.ruleChip }}" hint-placeholder-val="{{ false }}"><button onClick="{{ q.ruleGo }}" style="align-self:flex-start;border:none;background:rgba(45,212,191,.14);color:#0d7a6d;border-radius:5px;font-size:10.5px;font-weight:700;padding:2px 8px;cursor:pointer">✦ {{ q.ruleChip }}</button></sc-if>
+                <div style="display:flex;gap:6px">
+                  <sc-if value="{{ q.openBrief }}" hint-placeholder-val="{{ true }}"><button onClick="{{ q.open }}" style="border:none;background:#12284B;color:#fff;border-radius:7px;font-size:11.5px;font-weight:700;padding:6px 12px;cursor:pointer">Open decision →</button></sc-if>
+                  <sc-if value="{{ q.quickApprove }}" hint-placeholder-val="{{ false }}"><button onClick="{{ q.approve }}" style="border:none;background:#1E7A46;color:#fff;border-radius:7px;font-size:11.5px;font-weight:700;padding:6px 12px;cursor:pointer">✓ Approve</button></sc-if>
+                  <span style="margin-left:auto;font-size:10.5px;color:#8fa3c0;align-self:center">{{ q.agent }}</span>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ aiQueueEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:20px;font-size:12.5px;color:#1E7A46;font-weight:600;text-align:center">All caught up — the fleet keeps working. 🎉</div>
+            </sc-if>
+          </div>
+          <!-- fleet + receipts -->
+          <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:12px;align-items:start">
+            <div>
+              <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:8px;display:flex;gap:7px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2s infinite"></span>Your fleet — live</div>
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <sc-for list="{{ aiFleet }}" as="fl" hint-placeholder-count="7">
+                  <div style="background:#fff;border:1px solid {{ fl.bd }};border-radius:10px">
+                    <button onClick="{{ fl.open }}" style="display:flex;gap:9px;align-items:center;width:100%;border:none;background:none;padding:9px 12px;cursor:pointer;text-align:left">
+                      <span style="flex:none;width:28px;height:28px;border-radius:8px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:10px;font-weight:800">{{ fl.icon }}</span>
+                      <span style="flex:1;min-width:0"><span style="display:block;font-size:12px;font-weight:600;color:#12284B">{{ fl.name }}</span><span style="display:block;font-size:10.5px;color:#5B6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ fl.today }}</span></span>
+                      <span style="width:6px;height:6px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2.4s infinite"></span>
+                    </button>
+                    <sc-if value="{{ fl.openNow }}" hint-placeholder-val="{{ false }}">
+                      <div style="border-top:1px dashed #eef2f8;padding:9px 12px;font-size:11px;color:#222;line-height:1.55;animation:dvfade .2s ease">
+                        <div><b style="color:#0d7a6d">Plan:</b> {{ fl.plan }}</div>
+                        <div style="margin-top:3px"><b style="color:#0d7a6d">Mandate:</b> {{ fl.mandate }}</div>
+                        <div style="margin-top:3px"><b style="color:#0d7a6d">Recent reflection:</b> {{ fl.reflection }}</div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:8px">Receipts — everything the fleet did on its own</div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+                <sc-for list="{{ aiFeedRows }}" as="fe" hint-placeholder-count="10">
+                  <div style="display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid #f2f5fa;align-items:center;background:{{ fe.bg }};animation:{{ fe.anim }}">
+                    <span style="flex:none;width:26px;height:26px;border-radius:7px;background:rgba(45,212,191,.12);color:#0d7a6d;display:grid;place-items:center;font-size:9px;font-weight:800">{{ fe.icon }}</span>
+                    <span style="flex:1;min-width:0;font-size:11.5px;color:#222"><b>{{ fe.verb }}</b> {{ fe.obj }}<span style="display:block;font-size:10.5px;color:#5B6472">✦ {{ fe.detail }}</span></span>
+                    <span style="flex:none;font-size:10px;color:#8fa3c0;width:58px;text-align:right">{{ fe.when }}</span>
+                    <sc-if value="{{ fe.hash }}" hint-placeholder-val="{{ false }}"><button onClick="{{ fe.verify }}" title="Independently verify this receipt" style="flex:none;border:none;background:#F4F7FC;color:#1F4E79;border-radius:5px;font-size:10px;font-family:ui-monospace,monospace;padding:3px 7px;cursor:pointer">{{ fe.hash }} ✓</button></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- AI:CLOSE -->
+      <sc-if value="{{ isAiClose }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:18px;position:relative">
+            <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:4px">The Close — a living object, not a checklist</div>
+            <div style="font-size:11.5px;color:#5B6472;margin-bottom:10px">Six streams close continuously. Each arc advances as its agent works — blockers pin until you decide.</div>
+            <div style="position:relative;width:min(360px,100%);margin:0 auto">
+              <svg viewBox="0 0 200 200" style="width:100%;display:block">
+                <sc-for list="{{ aiArcs }}" as="arc" hint-placeholder-count="6">
+                  <circle cx="100" cy="100" r="84" fill="none" stroke="#eef2f8" stroke-width="13" pathLength="100" stroke-dasharray="14.4 85.6" transform="{{ arc.rot }}" stroke-linecap="round"></circle>
+                  <circle cx="100" cy="100" r="84" fill="none" stroke="{{ arc.color }}" stroke-width="13" pathLength="100" stroke-dasharray="{{ arc.dash }}" transform="{{ arc.rot }}" stroke-linecap="round" style="transition:stroke-dasharray .6s ease"></circle>
+                </sc-for>
+              </svg>
+              <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center;pointer-events:none">
+                <div><div style="font-family:Fraunces,serif;font-size:21px;font-weight:600;color:#12284B">Day 2 of 4</div>
+                <div style="font-size:11px;color:#5B6472;margin-top:2px">projected complete</div>
+                <div style="font-size:12.5px;font-weight:700;color:#0d7a6d">{{ aiCloseEta }}</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px">
+              <sc-for list="{{ aiCloseLegend }}" as="lg" hint-placeholder-count="6">
+                <div style="display:flex;gap:7px;align-items:center;font-size:11.5px;padding:4px 6px;border-radius:6px;background:{{ lg.bg }}">
+                  <span style="width:8px;height:8px;border-radius:2px;background:{{ lg.color }};flex:none"></span>
+                  <span style="color:#222;font-weight:600">{{ lg.label }}</span>
+                  <span style="margin-left:auto;font-variant-numeric:tabular-nums;font-weight:700;color:#12284B">{{ lg.pct }}%</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:14px 16px">
+              <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:9px">Blocking the close — your calls</div>
+              <sc-for list="{{ aiBlockers }}" as="bl" hint-placeholder-count="3">
+                <div style="display:flex;gap:9px;align-items:center;border:1px solid #f2d9d4;background:rgba(192,57,43,.03);border-radius:9px;padding:9px 11px;margin-bottom:7px">
+                  <span style="width:8px;height:8px;border-radius:50%;background:#C0392B;flex:none;animation:dvpulse 1.6s infinite"></span>
+                  <span style="flex:1;font-size:11.5px;color:#222">{{ bl.text }}<span style="display:block;font-size:10.5px;color:#5B6472">pins the <b>{{ bl.arc }}</b> arc</span></span>
+                  <button onClick="{{ bl.go }}" style="border:none;background:#12284B;color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:5px 10px;cursor:pointer;flex:none">{{ bl.cta }}</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ aiBlockersEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#1E7A46;font-weight:600;text-align:center;padding:6px">No blockers — the close is running itself. 🎉</div></sc-if>
+            </div>
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:14px 16px">
+              <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:9px;display:flex;gap:7px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2s infinite"></span>Next 24 hours — the fleet’s plan</div>
+              <sc-for list="{{ aiCloseNext }}" as="nx" hint-placeholder-count="4">
+                <div style="display:flex;gap:9px;font-size:11.5px;padding:5px 0;border-bottom:1px dashed #eef2f8;align-items:baseline">
+                  <span style="flex:none;width:52px;color:#0d7a6d;font-weight:700">{{ nx.when }}</span>
+                  <span style="flex:none;width:26px;height:18px;border-radius:5px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:8.5px;font-weight:800">{{ nx.icon }}</span>
+                  <span style="color:#222">{{ nx.what }}</span>
+                </div>
+              </sc-for>
+              <div style="font-size:10.5px;color:#8fa3c0;margin-top:8px">Every step above runs under the policy document — nothing outside it, ever.</div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- AI:POLICY -->
+      <sc-if value="{{ isAiPolicy }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="margin-bottom:12px">
+            <div style="font-family:Fraunces,serif;font-size:19px;font-weight:600;color:#12284B">The policy document your agents obey</div>
+            <div style="font-size:12px;color:#5B6472;margin-top:2px">Written in plain English. Every sentence is enforced, logged, and testable — edit one and watch what changes.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <sc-for list="{{ aiPolicyGroups }}" as="pg" hint-placeholder-count="3">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;overflow:hidden">
+                  <div style="padding:9px 15px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px">{{ pg.name }}</div>
+                  <sc-for list="{{ pg.rows }}" as="pr" hint-placeholder-count="3">
+                    <div onClick="{{ pr.sel }}" style="display:flex;gap:10px;width:100%;text-align:left;border-bottom:1px solid #f2f5fa;background:{{ pr.bg }};padding:10px 15px;cursor:pointer;align-items:flex-start">
+                      <span style="flex:none;font-size:10.5px;font-weight:800;color:#1F4E79;margin-top:1px">{{ pr.id }}</span>
+                      <span style="flex:1;min-width:0">
+                        <span style="display:block;font-size:12.5px;color:#222;line-height:1.5">
+                          <sc-if value="{{ pr.pre }}" hint-placeholder-val="{{ false }}">{{ pr.pre }}<span style="display:inline-block;background:rgba(45,212,191,.14);border:1px solid rgba(45,212,191,.5);border-radius:5px;padding:0 6px;font-weight:800;color:#0d7a6d">{{ pr.thresh }}%</span>{{ pr.post }}</sc-if>
+                          <sc-if value="{{ pr.plain }}" hint-placeholder-val="{{ false }}">{{ pr.plain }}</sc-if>
+                        </span>
+                        <span style="display:block;font-size:10.5px;color:#0d7a6d;margin-top:3px">✦ {{ pr.fired }} · enforced by control {{ pr.ctl }}</span>
+                      </span>
+                      <sc-if value="{{ pr.editBtns }}" hint-placeholder-val="{{ false }}">
+                        <span style="flex:none;display:flex;gap:4px">
+                          <button onClick="{{ pr.set95 }}" style="border:1px solid {{ pr.b95 }};background:{{ pr.bg95 }};color:{{ pr.fg95 }};border-radius:5px;font-size:10.5px;font-weight:700;padding:3px 8px;cursor:pointer">95%</button>
+                          <button onClick="{{ pr.set97 }}" style="border:1px solid {{ pr.b97 }};background:{{ pr.bg97 }};color:{{ pr.fg97 }};border-radius:5px;font-size:10.5px;font-weight:700;padding:3px 8px;cursor:pointer">97%</button>
+                        </span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+              <div style="font-size:10.5px;color:#8fa3c0;padding:0 4px">Changes to this document are themselves written to the immutable trail (control C-15) — autonomy is a written, auditable control, not a vibe.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-if value="{{ aiPolicyChecking }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid rgba(45,212,191,.4);border-radius:12px;padding:14px 16px;font-size:12px;color:#0d7a6d;display:flex;gap:8px;align-items:center"><span style="animation:dvpulse 1s infinite">✦</span> Re-checking 412 July transactions against the new threshold…</div>
+              </sc-if>
+              <sc-if value="{{ aiPolicyDiff }}" hint-placeholder-val="{{ false }}">
+                <div style="background:rgba(199,127,10,.05);border:1px solid rgba(199,127,10,.4);border-radius:12px;padding:14px 16px;animation:dvfade .3s ease">
+                  <div style="font-size:12.5px;font-weight:700;color:#7a4e06;margin-bottom:7px">What would change at 97%</div>
+                  <div style="font-size:12px;color:#222;line-height:1.5;margin-bottom:8px">3 of last week’s 39 auto-posts would have come to your queue instead:</div>
+                  <sc-for list="{{ aiPolicyDiffRows }}" as="dr" hint-placeholder-count="3">
+                    <div style="display:flex;font-size:11.5px;padding:3px 0;border-bottom:1px dashed rgba(199,127,10,.25)"><span style="color:#222;font-weight:600">{{ dr.v }}</span><span style="margin-left:auto;color:#5B6472">{{ dr.c }}% · {{ dr.a }}</span></div>
+                  </sc-for>
+                  <div style="font-size:11px;color:#7a4e06;margin-top:8px">Mandate change logged to the trail · the fleet re-read its policy ✓</div>
+                </div>
+              </sc-if>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:14px 16px">
+                <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:4px">Enforcement trace — {{ aiPolicySelId }}</div>
+                <div style="font-size:11.5px;color:#222;line-height:1.55;background:rgba(45,212,191,.06);border:1px solid rgba(45,212,191,.3);border-radius:8px;padding:9px 12px;margin-bottom:9px">“{{ aiPolicySelText }}”</div>
+                <sc-for list="{{ aiPolicyTrace }}" as="tr2" hint-placeholder-count="3">
+                  <div style="display:flex;gap:8px;font-size:11.5px;padding:5px 0;border-bottom:1px dashed #eef2f8;align-items:baseline">
+                    <span style="flex:none;width:88px;color:#5B6472">{{ tr2.when }}</span>
+                    <span style="flex:1;color:#222">{{ tr2.what }}</span>
+                    <span style="flex:none;font-family:ui-monospace,monospace;font-size:9.5px;color:#8fa3c0">{{ tr2.hash }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:14px 16px">
+                <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:8px">Compiled mandate — what each agent may do</div>
+                <sc-for list="{{ aiMandates }}" as="md" hint-placeholder-count="4">
+                  <div style="display:flex;gap:9px;font-size:11.5px;padding:5px 0;border-bottom:1px dashed #eef2f8;align-items:center">
+                    <span style="flex:none;width:26px;height:20px;border-radius:5px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:8.5px;font-weight:800">{{ md.icon }}</span>
+                    <span style="flex:1;color:#222">{{ md.text }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- AI:MEMORY -->
+      <sc-if value="{{ isAiMemory }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="margin-bottom:12px">
+            <div style="font-family:Fraunces,serif;font-size:19px;font-weight:600;color:#12284B">Your firm’s memory</div>
+            <div style="font-size:12px;color:#5B6472;margin-top:2px">Every correction you make becomes a rule your agents obey. This is the asset that compounds — and it’s yours.</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+            <sc-for list="{{ aiMemStats }}" as="ms" hint-placeholder-count="4">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:10px;padding:12px 15px;border-left:3px solid {{ ms.accent }}">
+                <div style="font-size:10.5px;color:#5B6472;font-weight:700;text-transform:uppercase;letter-spacing:.4px">{{ ms.label }}</div>
+                <div style="font-size:20px;font-weight:700;color:#12284B;margin-top:3px">{{ ms.value }}</div>
+                <div style="font-size:10.5px;color:{{ ms.subColor }}">{{ ms.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;align-items:start">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+              <div style="padding:11px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center"><b style="font-size:13px;color:#12284B">Rules learned from your team</b><span style="margin-left:auto;font-size:10.5px;color:#5B6472">newest first · each carries its provenance &amp; hash</span></div>
+              <sc-for list="{{ aiMemRules }}" as="rl" hint-placeholder-count="7">
+                <button onClick="{{ rl.open }}" style="display:flex;gap:10px;width:100%;text-align:left;border:none;border-bottom:1px solid #f2f5fa;background:{{ rl.bg }};padding:10px 16px;cursor:pointer;align-items:flex-start;animation:{{ rl.anim }}">
+                  <span style="flex:none;font-size:10.5px;font-weight:800;color:#0d7a6d;background:rgba(45,212,191,.12);border-radius:5px;padding:2px 7px;margin-top:1px">{{ rl.id }}</span>
+                  <span style="flex:1;min-width:0">
+                    <span style="display:block;font-size:12px;color:#222;line-height:1.5">{{ rl.text }}</span>
+                    <span style="display:block;font-size:10.5px;color:#5B6472;margin-top:2px">{{ rl.src }} · applied {{ rl.applied }}×<sc-if value="{{ rl.isNew }}" hint-placeholder-val="{{ false }}"><span style="margin-left:6px;background:#2DD4BF;color:#0c2d29;font-size:9px;font-weight:800;border-radius:4px;padding:1px 5px">NEW</span></sc-if></span>
+                    <sc-if value="{{ rl.openNow }}" hint-placeholder-val="{{ false }}">
+                      <span style="display:block;margin-top:6px;background:#F4F7FC;border:1px solid #eef2f8;border-radius:7px;padding:7px 10px;font-size:10.5px;color:#5B6472;line-height:1.6;animation:dvfade .2s ease">Provenance: human decision → rule proposed → confirmed → written to trust ledger<br>hash <span style="font-family:ui-monospace,monospace;color:#8fa3c0">{{ rl.hash }}</span> · <span style="color:#1E7A46;font-weight:700">chain intact ✓</span></span>
+                    </sc-if>
+                  </span>
+                </button>
+              </sc-for>
+              <div style="padding:10px 16px;background:#F4F7FC;font-size:11px;color:#12284B;line-height:1.5"><b>This memory is yours.</b> It took 14 months to build — it doesn’t come with any other software, and it doesn’t leave with ours.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="font-size:12px;font-weight:700;color:#12284B;margin-bottom:8px">Coding accuracy — learning curve</div>
+                <div style="display:flex;align-items:flex-end;gap:7px;height:90px">
+                  <sc-for list="{{ aiMemTrend }}" as="tp" hint-placeholder-count="6">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+                      <span style="font-size:9.5px;font-weight:700;color:#0d7a6d">{{ tp.v }}</span>
+                      <span style="width:100%;background:linear-gradient(180deg,#2DD4BF,#1F4E79);border-radius:4px 4px 0 0;height:{{ tp.h }}"></span>
+                      <span style="font-size:9.5px;color:#5B6472">{{ tp.m }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font-size:10.5px;color:#5B6472;margin-top:7px">81% → {{ aiMemAcc }}% since February — every point of that came from your team’s decisions.</div>
+              </div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="font-size:12px;font-weight:700;color:#12284B;margin-bottom:8px">Exceptions per month — falling</div>
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <sc-for list="{{ aiMemEx }}" as="ex2" hint-placeholder-count="6">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:10.5px"><span style="width:26px;color:#5B6472">{{ ex2.m }}</span><span style="flex:1;height:9px;background:#eef2f8;border-radius:3px;overflow:hidden"><span style="display:block;height:100%;background:#8fa3c0;border-radius:3px;width:{{ ex2.w }}"></span></span><span style="width:20px;text-align:right;font-weight:700;color:#12284B">{{ ex2.v }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="font-size:12px;font-weight:700;color:#12284B;margin-bottom:8px">What the agents say they learned</div>
+                <sc-for list="{{ aiMemRefl }}" as="rf" hint-placeholder-count="3">
+                  <div style="display:flex;gap:9px;font-size:11px;padding:5px 0;border-bottom:1px dashed #eef2f8;align-items:flex-start"><span style="flex:none;width:26px;height:20px;border-radius:5px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:8.5px;font-weight:800">{{ rf.icon }}</span><span style="color:#222;line-height:1.5">{{ rf.text }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </main>
+  </div>
+  <!-- AI:OVERLAYS -->
+  <!-- Decision Brief -->
+  <sc-if value="{{ aiBriefOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ aiBriefClose }}" style="position:fixed;inset:0;background:rgba(18,40,75,.45);z-index:70;display:grid;place-items:center;padding:30px">
+      <div onClick="{{ stop }}" style="background:#fff;border-radius:14px;width:min(640px,92vw);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(18,40,75,.3);animation:dvfade .2s ease">
+        <div style="flex:none;padding:15px 20px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:10px">
+          <span style="background:{{ abChipBg }};color:{{ abChipFg }};font-size:11px;font-weight:700;border-radius:6px;padding:3px 9px">{{ abConf }}%</span>
+          <div style="flex:1"><div style="font-family:Fraunces,serif;font-size:16px;font-weight:600;color:#12284B">{{ abTitle }}</div><div style="font-size:11px;color:#5B6472;margin-top:1px">Decision brief · assembled by {{ abAgent }}</div></div>
+          <button onClick="{{ aiBriefClose }}" style="border:none;background:#F4F7FC;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#5B6472">✕</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="background:rgba(45,212,191,.06);border:1px solid rgba(45,212,191,.3);border-radius:9px;padding:10px 13px">
+            <div style="font-size:10px;font-weight:700;color:#0d7a6d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Why this is here</div>
+            <div style="font-size:12px;color:#12284B;line-height:1.5">“{{ abPolicy }}”</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">The question</div>
+            <div style="font-size:12.5px;color:#222;line-height:1.55">{{ abAsk }}</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Evidence assembled</div>
+            <sc-for list="{{ abEvidence }}" as="ev" hint-placeholder-count="3">
+              <div style="display:flex;gap:8px;font-size:11.5px;color:#222;padding:3px 0;line-height:1.5"><span style="color:#0d7a6d">▸</span><span>{{ ev }}</span></div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ abOptions }}" hint-placeholder-val="{{ false }}">
+            <div>
+              <div style="font-size:10px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Your call</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{ abOptions }}" as="op" hint-placeholder-count="2">
+                  <button onClick="{{ op.pick }}" style="border:2px solid {{ op.bd }};background:{{ op.bg }};color:{{ op.fg }};border-radius:9px;font-size:12px;font-weight:700;padding:9px 14px;cursor:pointer">{{ op.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ abLearn }}" hint-placeholder-val="{{ false }}">
+            <div style="border:1px dashed rgba(45,212,191,.6);background:rgba(45,212,191,.05);border-radius:9px;padding:10px 13px;animation:dvfade .35s ease">
+              <div style="font-size:10px;font-weight:700;color:#0d7a6d;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">✦ What I’ll remember</div>
+              <div style="font-size:12px;color:#12284B;line-height:1.5">{{ abLearnText }}</div>
+              <div style="font-size:10.5px;color:#5B6472;margin-top:4px">rule R-017 · source: your decision, 28 Jul 2026 · will be written to the trust ledger · <a href="#" onClick="{{ abForget }}" style="color:#C0392B">don’t remember this</a></div>
+            </div>
+          </sc-if>
+          <div style="background:#F4F7FC;border:1px solid #e3e9f2;border-radius:9px;padding:10px 13px">
+            <div style="font-size:10px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px">Recommendation</div>
+            <div style="font-size:12px;color:#222;line-height:1.55">✦ {{ abRecommend }}</div>
+          </div>
+          <div style="font-size:11px;color:#5B6472;line-height:1.5"><b style="color:#12284B">If you approve:</b> {{ abImpact }}</div>
+        </div>
+        <div style="flex:none;padding:12px 20px;border-top:1px solid #e3e9f2;display:flex;gap:8px;align-items:center">
+          <button onClick="{{ abApprove }}" style="border:none;background:{{ abApproveBg }};color:#fff;border-radius:8px;font-size:12.5px;font-weight:700;padding:9px 16px;cursor:{{ abApproveCur }}">{{ abApproveLabel }}</button>
+          <button style="border:1px solid #d7dfec;background:#fff;color:#222;border-radius:8px;font-size:12px;padding:9px 13px;cursor:pointer">Edit</button>
+          <button style="border:1px solid #e6c9c4;background:#fff;color:#C0392B;border-radius:8px;font-size:12px;padding:9px 13px;cursor:pointer">Reject</button>
+          <button onClick="{{ abAskQ }}" style="margin-left:auto;border:1px solid rgba(45,212,191,.5);background:rgba(45,212,191,.06);color:#0d7a6d;border-radius:8px;font-size:12px;font-weight:600;padding:9px 13px;cursor:pointer">✦ Ask a question</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <!-- Benchmark modal -->
+  <sc-if value="{{ aiBenchOn }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ aiBenchClose }}" style="position:fixed;inset:0;background:rgba(18,40,75,.45);z-index:70;display:grid;place-items:center;padding:30px">
+      <div onClick="{{ stop }}" style="background:#fff;border-radius:14px;width:min(540px,92vw);box-shadow:0 20px 60px rgba(18,40,75,.3);animation:dvfade .2s ease;padding:20px 22px">
+        <div style="display:flex;align-items:center;margin-bottom:14px">
+          <div><div style="font-family:Fraunces,serif;font-size:17px;font-weight:600;color:#12284B">How you compare — Dovetail network</div><div style="font-size:11px;color:#5B6472;margin-top:2px">41 companies of similar size &amp; industry · anonymized</div></div>
+          <button onClick="{{ aiBenchClose }}" style="margin-left:auto;border:none;background:#F4F7FC;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#5B6472">✕</button>
+        </div>
+        <sc-for list="{{ aiBenchDetail }}" as="bd2" hint-placeholder-count="3">
+          <div style="margin-bottom:14px">
+            <div style="display:flex;font-size:12px;margin-bottom:4px"><b style="color:#12284B">{{ bd2.label }}</b><span style="margin-left:auto;color:#0d7a6d;font-weight:700">{{ bd2.youLabel }}</span><span style="color:#8fa3c0;margin-left:8px">peers: {{ bd2.medianLabel }}</span></div>
+            <div style="position:relative;height:10px;background:#eef2f8;border-radius:5px"><span style="position:absolute;top:0;bottom:0;left:{{ bd2.bandL }};width:{{ bd2.bandW }};background:#dfe7f2;border-radius:5px"></span><span style="position:absolute;top:-2px;left:{{ bd2.youPos }};width:14px;height:14px;border-radius:50%;background:#2DD4BF;border:2px solid #fff;box-shadow:0 0 0 1.5px #2DD4BF"></span></div>
+            <div style="font-size:11px;color:#5B6472;margin-top:4px">✦ {{ bd2.driver }}</div>
+          </div>
+        </sc-for>
+        <div style="font-size:11.5px;color:#12284B;background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.3);border-radius:8px;padding:9px 12px">Every new company on Dovetail makes every company’s agents smarter — 2 of your 3 duplicate catches this month came from patterns first seen elsewhere in the network.</div>
+      </div>
+    </div>
+  </sc-if>
+  </sc-if>
+  <!-- WhatsApp replay -->
+  <sc-if value="{{ waOn }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ waClose }}" style="position:fixed;inset:0;background:rgba(18,40,75,.5);z-index:70;display:grid;place-items:center;padding:30px">
+      <div onClick="{{ stop }}" style="background:#111b21;border-radius:26px;width:320px;box-shadow:0 24px 70px rgba(0,0,0,.5);animation:dvfade .2s ease;overflow:hidden;border:6px solid #0B1B33">
+        <div style="background:#1f2c33;padding:11px 14px;display:flex;align-items:center;gap:9px">
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#2DD4BF,#1F4E79);display:grid;place-items:center;font-size:13px;color:#0c2d29;font-weight:800">✦</div>
+          <div style="flex:1"><div style="color:#fff;font-size:12.5px;font-weight:700">Dovetail AI</div><div style="color:#8fa3c0;font-size:10px">approvals · WhatsApp Business</div></div>
+          <button onClick="{{ waClose }}" style="border:none;background:rgba(255,255,255,.1);border-radius:6px;width:24px;height:24px;cursor:pointer;color:#cbd5e1">✕</button>
+        </div>
+        <div style="background:#0b141a;padding:14px 12px;min-height:330px;display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ waMsgs }}" as="wm" hint-placeholder-count="3">
+            <sc-if value="{{ wm.dv }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self:flex-start;max-width:85%;background:#1f2c33;color:#e9edef;border-radius:9px 9px 9px 2px;padding:8px 11px;font-size:11.5px;line-height:1.5;white-space:pre-line;animation:dvfade .3s ease">{{ wm.text }}<sc-if value="{{ wm.buttons }}" hint-placeholder-val="{{ false }}"><span style="display:flex;gap:6px;margin-top:7px"><span style="background:rgba(45,212,191,.18);color:#2DD4BF;border:1px solid rgba(45,212,191,.5);border-radius:6px;font-size:10.5px;font-weight:700;padding:3px 9px">✓ Approve</span><span style="background:transparent;color:#8fa3c0;border:1px solid #37444d;border-radius:6px;font-size:10.5px;padding:3px 9px">Hold</span></span></sc-if><span style="display:block;text-align:right;font-size:9px;color:#8fa3c0;margin-top:4px">{{ wm.time }}</span></div>
+            </sc-if>
+            <sc-if value="{{ wm.user }}" hint-placeholder-val="{{ false }}">
+              <div style="align-self:flex-end;max-width:80%;background:#005c4b;color:#e9edef;border-radius:9px 9px 2px 9px;padding:8px 11px;font-size:11.5px;animation:dvfade .3s ease">{{ wm.text }}<span style="display:block;text-align:right;font-size:9px;color:#9fd3c7;margin-top:4px">{{ wm.time }} ✓✓</span></div>
+            </sc-if>
+            <sc-if value="{{ wm.receipt }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ waToTrail }}" style="align-self:center;border:1px solid rgba(45,212,191,.5);background:rgba(45,212,191,.1);color:#2DD4BF;border-radius:14px;font-size:10.5px;font-weight:700;padding:5px 12px;cursor:pointer;animation:dvfade .3s ease">🛡 {{ wm.text }} — view in audit trail</button>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div style="background:#1f2c33;padding:8px 12px;font-size:10px;color:#8fa3c0;text-align:center">Approve from anywhere — every decision lands as an immutable receipt.</div>
+      </div>
+    </div>
+  </sc-if>
   <!-- ============ ASK DOVETAIL PANEL ============ -->
   <sc-if value="{{ askOpen }}" hint-placeholder-val="{{ false }}">
     <div style="width:440px;flex:none;background:#fff;border-left:1px solid #e3e9f2;display:flex;flex-direction:column;animation:dvslide .22s ease;box-shadow:-8px 0 24px rgba(18,40,75,.08)">
@@ -908,13 +1381,23 @@ input{font-family:Inter,system-ui,sans-serif}
 class Component extends DCLogic {
   state = {screen:'dashboard',persona:'Controller',entity:'CA',period:'2026-07',book:'functional',
     askOpen:false,askMsgs:[],askInput:'',askThinking:false,
+    mode:'classic',aiScreen:'mission',aiTick:0,aiBrief:null,aiLearned:false,aiRuleGlow:false,
+    aiIntent:'',aiSim:null,aiSimStep:0,aiPolicyEdit:false,aiPolicyChecking:false,aiAgent:null,
+    waOpen:false,waStep:0,aiBench:false,
     drill:null,txn:null,verified:false,toast:null,ready:false};
   componentDidMount(){
     import('./data.js').then(D=>{this.D=D;this.ledger=D.buildLedger();this.setState({ready:true})});
-    this._kd=(e)=>{if(e.key==='Escape')this.setState({drill:null,txn:null})};
+    this._kd=(e)=>{if(e.key==='Escape')this.setState({drill:null,txn:null,aiBrief:null,waOpen:false,aiBench:false,aiAgent:null})};
     window.addEventListener('keydown',this._kd);
   }
-  componentWillUnmount(){window.removeEventListener('keydown',this._kd)}
+  componentWillUnmount(){window.removeEventListener('keydown',this._kd);this._stopLive()}
+  goMode(m){
+    if(m===this.state.mode)return;
+    if(m==='ai'){this._startLive();this.setState({mode:'ai'})}
+    else{this._stopLive();this.setState({mode:'classic'})}
+  }
+  _startLive(){if(this._live)return;this._live=setInterval(()=>this.setState({aiTick:this.state.aiTick+1}),3500)}
+  _stopLive(){if(this._live){clearInterval(this._live);this._live=null}}
   // ---- helpers ----
   cur(){return this.state.entity==='GROUP'?'CAD':this.D.ENTITIES.find(e=>e.id===this.state.entity).cur}
   fm(n){return this.D.fmt(n,this.cur())}
@@ -1006,6 +1489,8 @@ class Component extends DCLogic {
       askInput:s.askInput,askType:e=>this.setState({askInput:e.target.value}),
       askKey:e=>{if(e.key==='Enter'&&s.askInput.trim())this.ask(s.askInput.trim())},
       askSend:()=>{if(s.askInput.trim())this.ask(s.askInput.trim())},
+      isClassic:s.mode!=='ai',isAI:s.mode==='ai',
+      goAI:()=>this.goMode('ai'),goClassic:()=>this.goMode('classic'),
       toast:s.toast,stop:e=>e.stopPropagation(),
       drill:!!(s.drill||s.txn),closeDrill:()=>this.setState({drill:null,txn:null}),
       drillTitle:s.txn?s.txn.desc:(s.drill?s.drill.title:''),
@@ -1039,7 +1524,7 @@ class Component extends DCLogic {
       verifyTxn:()=>this.setState({verified:true}),verified:s.verified};
   }
   vals_dash(){
-    const s=this.state,D=this.D;if(!D||s.screen!=='dashboard')return {isDash:s.screen==='dashboard',dashTiles:[],dashLeft:[],dashRight:[]};
+    const s=this.state,D=this.D;if(!D||s.screen!=='dashboard')return {isDash:!!D&&s.screen==='dashboard',dashTiles:[],dashLeft:[],dashRight:[]};
     const L=this.ledger,ent=s.entity,p='2026-07',cur=this.cur();
     const cash=D.cashByEntity(L,p),cashTot=ent==='GROUP'?cash.reduce((a,r)=>a+r.cad,0):(cash.find(r=>r.entity===ent)||{amt:0}).amt;
     const rev=-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,ent,p),0);
@@ -1202,7 +1687,7 @@ class Component extends DCLogic {
     const vend=s.apVendor||'Bell Canada';
     const vinfo={'Bell Canada':['6400 Telephone','G&A','GST 5%','Matches 14 prior bills from this vendor',97],'AWS (Amazon Web Services)':['5000 Cloud Hosting','Engineering','GST 5%','Usage invoice pattern, 24 prior bills',96],'Deloitte LLP':['6300 Professional Fees','G&A','GST 5%','Retainer per engagement letter',95],'Northgate Properties':['6100 Rent','G&A','GST 5%','Fixed monthly lease',99],'Staples Business':['6700 Office Supplies','G&A','GST 5%','Usual vendor pattern',96],'Harbour Print Co.':['6800 Marketing','Sales','GST 5%','New vendor — inferred from line items',84]}[vend]||['6700 Office Supplies','G&A','GST 5%','Best guess — please check',78];
     const bills=D.AP_QUEUE.filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
-    const rows=bills.map(b=>({vendor:b.vendor,invno:b.invno,conf:b.conf,amt:D.fmt2(b.amt,'CAD'),note:b.note?'Approved via WhatsApp':null,
+    const rows=bills.map(b=>({vendor:b.vendor,invno:b.invno,conf:b.conf,amt:D.fmt2(b.amt,'CAD'),note:b.note?'Approved via WhatsApp':null,noteGo:()=>this.waStart(),
       line2:(b.acct?b.acct+' '+D.acctName(b.acct):'⚠ Account: your call')+' · '+(b.dept||'—')+' · '+b.date+' — ✦ '+b.reason,
       match:b.match||null,bg:b.status==='escalated'?'rgba(192,57,43,.03)':'#fff',
       chipBg:b.conf>=95?'rgba(45,212,191,.16)':(b.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
@@ -1433,6 +1918,259 @@ class Component extends DCLogic {
         {name:'Intercompany eliminations',ca:'(4,100)',in:'—',us:'(1,360)',grp:'(5,460)',fw:'400',bg:'#fff'},
         {name:'FX translation (CTA) — reporting only',ca:'—',in:'1,285',us:'855',grp:'2,140',fw:'400',bg:'rgba(45,212,191,.05)'}],
       entIC:[{pair:'CA → IN · shared-services recharge',amt:'4,100 CAD',status:'Matched ✓'},{pair:'US → CA · platform license fee',amt:'1,000 USD',status:'Matched ✓'}]};
+  }
+  // ==================== AI-NATIVE MODE ====================
+  aiGo(sc){return()=>this.setState({aiScreen:sc,aiBrief:null,aiAgent:null})}
+  intent(q){
+    const s=q.toLowerCase().trim();if(!s)return;
+    this.setState({aiIntent:''});
+    if(/^(close|the close)/.test(s)){this.setState({aiScreen:'close'});this.say('Opening the close');return}
+    if(/polic/.test(s)){this.setState({aiScreen:'policy'});this.say('Opening Policy Studio');return}
+    if(/memor|rules|learn/.test(s)){this.setState({aiScreen:'memory'});this.say('Opening firm memory');return}
+    if(/queue|decision|mission|home/.test(s)){this.setState({aiScreen:'mission'});this.say('Back to Mission Control');return}
+    if(/simulat|delay|what if|what happens/.test(s)){this.runSim();return}
+    this.ask(q);
+  }
+  runSim(){
+    this.setState({aiScreen:'mission',aiSim:'maple',aiSimStep:0});
+    clearTimeout(this._simT);const step=(n)=>{this._simT=setTimeout(()=>{this.setState({aiSimStep:n});if(n<4)step(n+1)},900)};step(1);
+  }
+  vals_aix(){
+    const s=this.state;
+    if(s.mode!=='ai')return {};
+    const D=this.D;
+    const openDecisions=D?D.AI_DECISIONS.filter(d=>!this.aiDone(d)).length:0;
+    const nav=[['mission','◉','Mission Control',openDecisions||null],['close','◔','The Close',null],['policy','§','Policies',null],['memory','◈','Memory',null]];
+    return {
+      aiNav:nav.map(n=>({label:n[2],icon:n[1],badge:n[3],go:this.aiGo(n[0]),bg:s.aiScreen===n[0]?'rgba(45,212,191,.16)':'transparent',fg:s.aiScreen===n[0]?'#2DD4BF':'#c6d2e4',fw:s.aiScreen===n[0]?'700':'500'})),
+      aiIntent:s.aiIntent,aiIntentType:e=>this.setState({aiIntent:e.target.value}),
+      aiIntentKey:e=>{if(e.key==='Enter')this.intent(this.state.aiIntent)}
+    };
+  }
+  aiDone(d){
+    const s=this.state;
+    if(d.srcKind==='ap')return (s.apDone||[]).includes(d.srcId);
+    if(d.srcKind==='rec')return (s.bankDone||[]).includes(d.srcId);
+    if(d.srcKind==='ar')return (s.arSent||[]).includes(d.srcId);
+    return false;
+  }
+  aiApprove(d,msg){
+    const s=this.state;
+    if(d.srcKind==='ap')this.setState({apDone:[...(s.apDone||[]),d.srcId]});
+    else if(d.srcKind==='rec')this.setState({bankDone:[...(s.bankDone||[]),d.srcId]});
+    else if(d.srcKind==='ar')this.setState({arSent:[...(s.arSent||[]),d.srcId]});
+    this.say(msg||'Approved — receipt written to the trust ledger');
+  }
+  vals_aimission(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||s.aiScreen!=='mission'||!D)return {isAiMission:false};
+    const L=this.ledger;
+    const cash=D.cashByEntity(L,'2026-07').reduce((a,r)=>a+r.cad,0);
+    const rev=-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,'GROUP','2026-07'),0);
+    const askTel=()=>this.ask('Why is telephone expense 50% higher than last year?');
+    const P=s.persona;
+    let greet,parts;
+    if(P==='CFO'){greet='Morning, Alex. The fleet has the month under control.';
+      parts=[
+        {text:'Group cash is CAD '+D.fmt(cash)+' across three entities',chip:'cash by entity',go:()=>this.ask('What’s our cash position across all entities?')},
+        {text:'and July revenue is CAD '+D.fmt(rev)+', up 1.5% on June. Covenant headroom is comfortable at 2.4×.',chip:null},
+        {text:' One variance worth your eye: telephone is +54% YoY — I’ve already investigated',chip:'the answer',go:askTel},
+        {text:'. Two decisions are queued below; everything else ran on policy overnight.',chip:null}];
+    } else if(P==='CEO'){greet='Hi Priya — the numbers ran themselves last night.';
+      parts=[
+        {text:'Revenue is growing steadily and there’s more than a year of cash in the bank',chip:'see cash',go:()=>this.ask('What’s our cash position across all entities?')},
+        {text:'. Your finance team’s AI fleet handled 71 tasks since yesterday — only 3 needed a person, and none need you',chip:null},
+        {text:'. One thing to know: phone costs jumped, but it’s a one-time purchase',chip:'the story',go:askTel},
+        {text:', and normal bills resume next month.',chip:null}];
+    } else {greet='Good morning, Sam. While you slept, the fleet closed most of the gap.';
+      parts=[
+        {text:'Overnight your agents processed 43 bills (39 auto-posted), matched 11 receipts, and reconciled 96 bank lines — 93% auto',chip:'reconciliation',go:()=>{this.setState({aiScreen:'close'})}},
+        {text:'. The close is Day 2 of 4 and tracking a day early',chip:'the close',go:()=>this.setState({aiScreen:'close'})},
+        {text:'. I noticed telephone is +54% YoY — I already investigated',chip:'the answer',go:askTel},
+        {text:', and Meridian Foods paid only partially. ',chip:null},
+        {text:String(D.AI_DECISIONS.filter(d=>!this.aiDone(d)).length)+' decisions need you — about 6 minutes.',chip:null}];
+    }
+    // benchmarks
+    const bench=D.BENCHMARKS.map(b=>{const span=b.hi-b.lo;const pos=v=>Math.min(Math.max((v-b.lo)/span*100,2),96);
+      return {label:b.label,youLabel:b.youLabel,medianLabel:b.medianLabel,youPos:pos(b.you)+'%',bandL:Math.max(pos(b.median)-11,0)+'%',bandW:'22%'}});
+    // queue
+    const open=D.AI_DECISIONS.filter(d=>!this.aiDone(d));
+    const cards=open.map(d=>({title:d.title,conf:d.conf,sub:'✦ '+d.ask,agent:d.agent,
+      chipBg:d.conf>=95?'rgba(45,212,191,.16)':(d.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
+      chipFg:d.conf>=95?'#0d7a6d':(d.conf>=80?'#C77F0A':'#C0392B'),
+      bg:'#fff',bd:d.conf<80?'rgba(192,57,43,.35)':'#e3e9f2',
+      openBrief:true,quickApprove:false,ruleChip:null,
+      open:()=>this.setState({aiBrief:d.id})}));
+    if(s.aiLearned&&!(s.apDone||[]).includes('B13')){const f=D.AI_FOLLOWUP;
+      cards.push({title:f.title,conf:f.conf,sub:f.note,agent:f.agent,
+        chipBg:'rgba(45,212,191,.16)',chipFg:'#0d7a6d',bg:'rgba(45,212,191,.05)',bd:'rgba(45,212,191,.5)',
+        openBrief:false,quickApprove:true,ruleChip:'Applied rule R-017 — learned from you',
+        ruleGo:()=>this.setState({aiScreen:'memory'}),
+        approve:()=>this.aiApprove(f,'Approved — and rule R-017 just paid for itself')})}
+    // fleet
+    const doss={
+      'AP Agent':{plan:'Clear the review queue, then re-scan inbox for new bills at 16:00.',mandate:'Auto-post ≥ 95% · escalate no-PO bills (P-4).',refl:'I mis-coded Harbour Print’s first bill; I added rule R-014 for new print vendors.'},
+      'AR/Collections Agent':{plan:'Send approved reminders; watch for the Meridian balance.',mandate:'Nothing reaches a customer without human sign-off (P-5).',refl:'Meridian pays in instalments — I now expect partials.'},
+      'Treasury Agent':{plan:'Evening reconciliation run at 18:00; refresh 13-week forecast.',mandate:'Escalate unexplained items over 1,000 same-day (P-7).',refl:'The FX-fee pattern repeats monthly; I propose auto-coding it (awaiting your OK).'},
+      'Controller Agent':{plan:'Draft July accruals tonight; keep the close projection updated.',mandate:'Manual JEs always dual-reviewed (P-5).',refl:'Accrual reversals now post as one referenced batch.'},
+      'Audit Agent':{plan:'Nightly hash-chain verification; link today’s evidence to controls.',mandate:'Read-everything, write-nothing except the evidence vault.',refl:'PBC list is 78% complete — ahead of last quarter.'},
+      'Compliance Agent':{plan:'Tax-code the evening bill batch; monitor GST filings calendar.',mandate:'0 tax-code overrides without a human (C-13).',refl:'India GSTR-3B is due Aug 31 — reminder scheduled.'},
+      'Reporting/Analysis Agent':{plan:'Refresh variance explanations after tonight’s accruals.',mandate:'Every number I publish links to its transactions.',refl:'Two variances crossed materiality this month; both explained.'}};
+    const fleet=D.AGENTS.map(a=>({icon:a.icon,name:a.name,today:a.today,
+      bd:s.aiAgent===a.name?'rgba(45,212,191,.5)':'#e3e9f2',openNow:s.aiAgent===a.name,
+      plan:doss[a.name].plan,mandate:doss[a.name].mandate,reflection:doss[a.name].refl,
+      open:()=>this.setState({aiAgent:s.aiAgent===a.name?null:a.name})}));
+    // receipts feed
+    const revealed=D.AI_FEED.filter(f=>f.rel<0).slice(0,Math.min(s.aiTick,6));
+    const base=D.AI_FEED.filter(f=>f.rel>0);
+    const rows=[...revealed.reverse(),...base.slice().reverse()].map((f,i)=>({
+      icon:f.icon,verb:f.verb,obj:f.obj,detail:f.detail,
+      when:f.rel<0?'just now':(f.rel>=60?Math.floor(f.rel/60)+'h '+(f.rel%60)+'m ago':f.rel+'m ago'),
+      bg:f.rel<0&&i===0?'rgba(45,212,191,.05)':'#fff',anim:f.rel<0&&i===0?'dvfade .4s ease':'none',
+      hash:f.hash?D.fakeHash('feed'+f.rel+f.obj).slice(0,8):null,
+      verify:()=>this.say('Hash recomputed from the chain — receipt intact ✓')}));
+    // simulation
+    const sim=D.SIM_MAPLE,on=s.aiSim==='maple',done=s.aiSimStep>=4;
+    const maxC=Math.max(...sim.curve.map(c=>Math.max(c.now,c.sim)));
+    return {isAiMission:true,aiGreet:greet,aiBriefParts:parts,
+      aiBenchRows:bench,aiBenchOpen:()=>this.setState({aiBench:true}),
+      aiQueueCount:(cards.length||'0')+' of 71 actions today needed a human',
+      aiQueue:cards,aiQueueEmpty:cards.length===0,
+      aiFleet:fleet,aiFeedRows:rows,
+      aiSimOn:on,aiSimTitle:sim.title,aiSimClose:()=>this.setState({aiSim:null,aiSimStep:0}),
+      aiSimSteps:sim.steps.map((t,i)=>({text:t,mark:s.aiSimStep>i?'✓':(s.aiSimStep===i?'◌':'·'),color:s.aiSimStep>i?'#1E7A46':(s.aiSimStep===i?'#0d7a6d':'#8fa3c0')})),
+      aiSimDone:done,
+      aiSimCurve:sim.curve.map(c=>({label:c.label,val:(done?c.sim:c.now)+'k',nowPct:Math.round(c.now/maxC*100)+'%',simPct:(s.aiSimStep>=2?Math.round(c.sim/maxC*100):Math.round(c.now/maxC*100))+'%'})),
+      aiSimFinds:sim.findings.map(f=>({k:f[0],v:f[1]})),aiSimVerdict:sim.verdict};
+  }
+  waStart(){
+    this.setState({waOpen:true,waStep:1});
+    clearTimeout(this._wt);
+    const step=n=>{this._wt=setTimeout(()=>{this.setState({waStep:n});if(n<5)step(n+1)},850)};
+    step(2);
+  }
+  vals_awa(){
+    const s=this.state,D=this.D;
+    if(!s.waOpen||!D)return {waOn:false};
+    return {waOn:true,waClose:()=>this.setState({waOpen:false}),
+      waMsgs:D.WHATSAPP_THREAD.slice(0,s.waStep).map(m=>({dv:m.who==='dv',user:m.who==='user',receipt:m.who==='receipt',text:m.text,time:m.time,buttons:!!m.buttons})),
+      waToTrail:()=>{this.setState({waOpen:false,screen:'controls',ctlTab:'trail'});this.goMode('classic');this.say('Receipt #A-1067 — same entry, same hash, either mode')}};
+  }
+  vals_aibench(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||!s.aiBench||!D)return {aiBenchOn:false};
+    return {aiBenchOn:true,aiBenchClose:()=>this.setState({aiBench:false}),
+      aiBenchDetail:D.BENCHMARKS.map(b=>{const span=b.hi-b.lo;const pos=v=>Math.min(Math.max((v-b.lo)/span*100,2),94);
+        return {label:b.label,youLabel:b.youLabel,medianLabel:b.medianLabel,driver:b.driver,youPos:pos(b.you)+'%',bandL:Math.max(pos(b.median)-11,0)+'%',bandW:'22%'}})};
+  }
+  vals_aibrief(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||!s.aiBrief||!D)return {aiBriefOpen:false};
+    const d=D.AI_DECISIONS.find(x=>x.id===s.aiBrief);
+    if(!d)return {aiBriefOpen:false};
+    const choice=s.aiChoice,learn=d.learn&&choice==='5100'&&!s.aiNoLearn;
+    const canApprove=!d.options||!!choice;
+    const close=()=>this.setState({aiBrief:null,aiChoice:null,aiNoLearn:false});
+    return {aiBriefOpen:true,aiBriefClose:close,
+      abTitle:d.title,abAgent:d.agent,abConf:d.conf,
+      abChipBg:d.conf>=95?'rgba(45,212,191,.16)':(d.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
+      abChipFg:d.conf>=95?'#0d7a6d':(d.conf>=80?'#C77F0A':'#C0392B'),
+      abPolicy:d.policy,abAsk:d.ask,abEvidence:d.evidence,
+      abOptions:d.options?d.options.map(o=>({label:o.label,pick:()=>this.setState({aiChoice:o.key,aiNoLearn:false}),
+        bd:choice===o.key?'#2DD4BF':'#d7dfec',bg:choice===o.key?'rgba(45,212,191,.1)':'#fff',fg:choice===o.key?'#0d7a6d':'#222'})):null,
+      abLearn:!!learn,abLearnText:d.learn?d.learn.text:'',
+      abForget:e=>{e.preventDefault();this.setState({aiNoLearn:true});this.say('OK — decided without remembering')},
+      abRecommend:d.recommend,abImpact:d.impact,
+      abApproveLabel:d.options?(choice?('✓ Post as '+choice+(learn?' & remember':'')):'Pick an option above'):'✓ Approve',
+      abApproveBg:canApprove?'#1E7A46':'#b9c8de',abApproveCur:canApprove?'pointer':'default',
+      abApprove:()=>{if(!canApprove)return;
+        const willLearn=!!learn;
+        this.aiApprove(d,willLearn?'Posted — and rule R-017 learned from your decision':'Approved — receipt written to the trust ledger');
+        if(willLearn){this.setState({aiLearned:true,aiRuleGlow:true});clearTimeout(this._ft);this._ft=setTimeout(()=>this.say('✦ New bill DF-0057 just arrived — auto-coded 5100 by rule R-017'),2600)}
+        close()},
+      abAskQ:()=>{this.setState({aiBrief:null,askOpen:true})}};
+  }
+  vals_aiclose(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||s.aiScreen!=='close'||!D)return {isAiClose:false};
+    const doneMS=(s.apDone||[]).includes('B09'),doneDF=(s.apDone||[]).includes('B12'),doneR1=(s.bankDone||[]).includes('R1'),att=!!s.ctlAttested;
+    const pct={sub:78+(doneMS?11:0)+(doneDF?11:0),rec:doneR1?96:93,pay:100,acc:Math.min(40+s.aiTick,46),ic:100,rev:att?72:35};
+    const blocked={sub:!(doneMS&&doneDF),rec:!doneR1,pay:false,acc:false,ic:false,rev:!att};
+    const arcs=D.CLOSE_TASKS.map((t,i)=>{const p=pct[t.key];
+      return {rot:'rotate('+(i*60-90)+' 100 100)',color:p>=100?'#2DD4BF':(blocked[t.key]?'#C77F0A':'#1F4E79'),
+        dash:(Math.max(p,3)/100*14.4).toFixed(2)+' '+(100-Math.max(p,3)/100*14.4).toFixed(2)}});
+    const resolved=(doneMS?1:0)+(doneR1?1:0)+(att?1:0);
+    const eta=['Aug 2, 16:00 — one day early','Aug 2, 11:00 — one day early','Aug 1, 18:00 — two days early','Aug 1, 14:00 — two days early'][resolved];
+    const blockers=[];
+    if(!doneMS)blockers.push({text:'MS-1188 — contractor hours +22% vs PO (control C-03)',arc:'Subledgers',cta:'Decide',go:()=>this.setState({aiBrief:'D2'})});
+    if(!doneDF)blockers.push({text:'Delta Freight DF-0042 — the AP Agent has a question',arc:'Subledgers',cta:'Answer',go:()=>this.setState({aiBrief:'D1'})});
+    if(!doneR1)blockers.push({text:'Meridian partial payment 1,240 — apply to INV-202607-100?',arc:'Bank rec',cta:'Decide',go:()=>this.setState({aiBrief:'D3'})});
+    if(!att)blockers.push({text:'C-12 — CFO monthly review awaiting attestation',arc:'Review & attest',cta:'Attest',go:()=>{this.setState({ctlAttested:true});this.say('Attestation recorded with timestamp — the Review arc just moved')}});
+    return {isAiClose:true,
+      aiArcs:arcs,aiCloseEta:eta,
+      aiCloseLegend:D.CLOSE_TASKS.map(t=>({label:t.label,pct:Math.min(pct[t.key],100),color:pct[t.key]>=100?'#2DD4BF':(blocked[t.key]?'#C77F0A':'#1F4E79'),bg:blocked[t.key]?'rgba(199,127,10,.06)':'transparent'})),
+      aiBlockers:blockers,aiBlockersEmpty:blockers.length===0,
+      aiCloseNext:[
+        {when:'18:00',icon:'TR',what:'Treasury Agent re-runs all three bank reconciliations'},
+        {when:'22:00',icon:'CO',what:'Controller Agent drafts July accrual journals for your morning review'},
+        {when:'02:00',icon:'AU',what:'Audit Agent verifies the hash chain and links today’s evidence'},
+        {when:'07:45',icon:'RE',what:'Your briefing lands — with the close projection updated overnight'}]};
+  }
+  vals_aipolicy(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||s.aiScreen!=='policy'||!D)return {isAiPolicy:false};
+    const edited=!!s.aiPolicyEdit,selId=s.aiPolicySel||'P-4';
+    const groups=['Autonomy','Approvals','Controls'].map(g=>({name:g,rows:D.POLICIES.filter(p=>p.group===g).map(p=>{
+      const isP1=p.id==='P-1';
+      return {id:p.id,fired:p.fired,ctl:p.ctl,bg:selId===p.id?'rgba(45,212,191,.06)':'#fff',
+        sel:()=>this.setState({aiPolicySel:p.id}),
+        pre:isP1?'Post bills automatically above ':null,thresh:edited?97:95,post:isP1?' confidence — always logged, never silent.':null,
+        plain:isP1?null:p.text,
+        editBtns:isP1,
+        set95:e=>{e.stopPropagation();if(!this.state.aiPolicyEdit)return;this.setState({aiPolicyEdit:false});this.say('Threshold back to 95% — change logged')},
+        set97:e=>{e.stopPropagation();if(this.state.aiPolicyEdit)return;this.setState({aiPolicyChecking:true,aiPolicySel:'P-1'});clearTimeout(this._pt);this._pt=setTimeout(()=>{this.setState({aiPolicyChecking:false,aiPolicyEdit:true});this.say('Mandate changed — written immutably to the trail (C-15)')},800)},
+        b95:!edited?'#12284B':'#d7dfec',bg95:!edited?'#12284B':'#fff',fg95:!edited?'#fff':'#5B6472',
+        b97:edited?'#12284B':'#d7dfec',bg97:edited?'#12284B':'#fff',fg97:edited?'#2DD4BF':'#5B6472'};
+    })}));
+    const sel=D.POLICIES.find(p=>p.id===selId);
+    const traces={
+      'P-1':[['3 Jul · 08:09','Bell #1245 queued to WhatsApp — 96% is above threshold but flagged one-time'],['5 Jul · 06:12','Bell #1263 auto-posted at 98% — receipt #A-1044'],['28 Jul · 09:15','39th auto-post this month — all receipted']],
+      'P-4':[['22 Jul · 14:03','Delta Freight DF-0042 escalated — no PO, no prior pattern'],['22 Jul · 14:03','Question drafted for the Controller — entry #A-1187'],['28 Jul · —','Awaiting your decision (queued in Mission Control)']],
+      'P-6':[['3 Jul · 11:20','Bell #1245 re-entry blocked — original of 12 Jun cited'],['14 Jul · 09:41','Staples duplicate blocked (same invno, same vendor)'],['21 Jul · 16:02','AWS second-invoice check passed — new sub-account, not a duplicate']]};
+    const trace=(traces[selId]||[['28 Jul','Continuously monitored — 0 exceptions this month'],['28 Jul','Evidence auto-linked to control '+sel.ctl]]).map((t,i)=>({when:t[0],what:t[1],hash:D.fakeHash(selId+i).slice(0,10)}));
+    return {isAiPolicy:true,
+      aiPolicyGroups:groups,
+      aiPolicyChecking:!!s.aiPolicyChecking,
+      aiPolicyDiff:edited&&!s.aiPolicyChecking,
+      aiPolicyDiffRows:[{v:'Deloitte LLP DL-77452',c:95,a:'2,730.00 CAD'},{v:'Staples Business ST-30988',c:96,a:'399.00 CAD'},{v:'Bell Canada #1245',c:96,a:'651.00 CAD'}],
+      aiPolicySelId:selId,aiPolicySelText:selId==='P-1'?('Post bills automatically above '+(edited?97:95)+'% confidence — always logged, never silent.'):sel.text,
+      aiPolicyTrace:trace,
+      aiMandates:[
+        {icon:'AP',text:'AP Agent — code & post bills to '+(edited?97:95)+'%; never pay; never touch vendor bank details.'},
+        {icon:'TR',text:'Treasury Agent — reconcile & propose matches; payments always human-released above 10k.'},
+        {icon:'AR',text:'AR Agent — draft reminders; nothing reaches a customer without sign-off.'},
+        {icon:'CO',text:'Controller Agent — post routine journals; manual JEs always dual-reviewed.'}]};
+  }
+  vals_aimemory(){
+    const s=this.state,D=this.D;
+    if(s.mode!=='ai'||s.aiScreen!=='memory'||!D)return {isAiMemory:false};
+    const M=D.MEMORY_STATS,learned=!!s.aiLearned;
+    const acc=learned?96.4:M.accuracy,rules=learned?M.rules+1:M.rules;
+    const list=learned?[{id:'R-017',text:'Delta Freight Services + project reference on lading → 5100 Implementation Labour, Meridian Deploy.',src:'Learned from your decision, 28 Jul 2026',applied:1,isNew:true},...D.RULES]:D.RULES;
+    return {isAiMemory:true,
+      aiMemStats:[
+        {label:'Rules learned',value:String(rules),sub:learned?'+1 just now — R-017':'+3 this month',accent:'#2DD4BF',subColor:learned?'#0d7a6d':'#5B6472'},
+        {label:'Coding accuracy',value:acc+'%',sub:'was '+M.accuracyStart+'% in February',accent:'#1F4E79',subColor:'#5B6472'},
+        {label:'Exceptions / month',value:String(M.exceptionsNow),sub:'was '+M.exceptionsStart+' in February',accent:'#1E7A46',subColor:'#5B6472'},
+        {label:'Firm memory',value:M.months+' months',sub:'and compounding',accent:'#C77F0A',subColor:'#5B6472'}],
+      aiMemRules:list.map(r=>({id:r.id,text:r.text,src:r.src,applied:r.applied,isNew:!!r.isNew,
+        bg:r.isNew&&s.aiRuleGlow?'rgba(45,212,191,.07)':'#fff',anim:r.isNew?'dvfade .5s ease':'none',
+        openNow:s.aiRule===r.id,hash:D.fakeHash('rule'+r.id).slice(0,14),
+        open:()=>this.setState({aiRule:s.aiRule===r.id?null:r.id})})),
+      aiMemTrend:M.trend.map(t=>({m:t[0],v:(learned&&t[0]==='Jul'?96.4:t[1])+'',h:Math.round(((learned&&t[0]==='Jul'?96.4:t[1])-75)/25*100)*0.72+'px'})),
+      aiMemAcc:acc,
+      aiMemEx:M.exTrend.map(e=>({m:e[0],v:e[1],w:Math.round(e[1]/M.exceptionsStart*100)+'%'})),
+      aiMemRefl:M.reflections.map(r=>({icon:r.icon,text:r.text}))};
   }
   renderVals(){
     let v={};
