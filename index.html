@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dovetail AI — Prototype</title>
+<script src="./vendor/react.production.min.js"></script>
+<script src="./vendor/react-dom.production.min.js"></script>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
+<style>
+html,body{margin:0;padding:0;background:#F4F7FC;font-family:Inter,system-ui,sans-serif;color:#222}
+*{box-sizing:border-box}
+a{color:#1F4E79;text-decoration:none}a:hover{color:#12284B;text-decoration:underline}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#c9d4e4;border-radius:5px}
+@keyframes dvfade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes dvslide{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
+@keyframes dvpulse{0%,100%{opacity:.5}50%{opacity:1}}
+button{font-family:Inter,system-ui,sans-serif}
+select{font-family:Inter,system-ui,sans-serif}
+input{font-family:Inter,system-ui,sans-serif}
+</style>
+</helmet>
+<div style="display:flex;height:100vh;overflow:hidden;background:#F4F7FC">
+  <!-- ============ SIDEBAR ============ -->
+  <nav style="width:216px;flex:none;background:#12284B;color:#fff;display:flex;flex-direction:column;overflow-y:auto">
+    <div style="padding:18px 16px 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#2DD4BF,#1F4E79);display:grid;place-items:center;font-weight:700;font-size:14px;color:#12284B">D</div>
+      <div>
+        <div style="font-family:Fraunces,serif;font-size:17px;font-weight:600;letter-spacing:.2px">Dovetail AI</div>
+        <div style="font-size:9.5px;color:#8fa3c0;letter-spacing:.5px;text-transform:uppercase">Prototype — demo data</div>
+      </div>
+    </div>
+    <div style="padding:10px 8px;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="11">
+        <button onClick="{{ nv.go }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 10px;border:none;border-radius:7px;cursor:pointer;font-size:13px;background:{{ nv.bg }};color:{{ nv.fg }};font-weight:{{ nv.fw }}">
+          <span style="width:18px;text-align:center;font-size:13px;opacity:.85">{{ nv.icon }}</span>{{ nv.label }}
+          <sc-if value="{{ nv.badge }}" hint-placeholder-val="{{ false }}"><span style="margin-left:auto;background:#2DD4BF;color:#12284B;font-size:10.5px;font-weight:700;border-radius:9px;padding:1px 7px">{{ nv.badge }}</span></sc-if>
+        </button>
+      </sc-for>
+    </div>
+    <div style="margin-top:auto;padding:12px 16px;border-top:1px solid rgba(255,255,255,.08);font-size:11px;color:#8fa3c0;line-height:1.5">
+      AI does the defined activities.<br><span style="color:#2DD4BF;font-weight:600">Humans decide.</span>
+    </div>
+  </nav>
+  <!-- ============ MAIN ============ -->
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+    <!-- topbar -->
+    <header style="flex:none;height:56px;background:#fff;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:10px;padding:0 18px">
+      <div style="font-family:Fraunces,serif;font-size:17px;font-weight:600;color:#12284B;margin-right:auto">{{ screenTitle }}</div>
+      <select value="{{ entity }}" onChange="{{ setEntity }}" style="height:32px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:12.5px;padding:0 8px;color:#222;cursor:pointer">
+        <sc-for list="{{ entityOpts }}" as="eo" hint-placeholder-count="4"><option value="{{ eo.id }}">{{ eo.label }}</option></sc-for>
+      </select>
+      <div style="height:32px;border:1px solid #d7dfec;border-radius:7px;display:flex;align-items:center;padding:0 10px;font-size:12px;color:#5B6472;background:#F4F7FC" title="Group reporting currency: CAD">{{ curLabel }}</div>
+      <select value="{{ persona }}" onChange="{{ setPersona }}" style="height:32px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:12.5px;padding:0 8px;color:#12284B;font-weight:600;cursor:pointer">
+        <sc-for list="{{ personaOpts }}" as="po" hint-placeholder-count="6"><option value="{{ po }}">{{ po }}</option></sc-for>
+      </select>
+      <button onClick="{{ toggleAsk }}" style="height:34px;border:none;border-radius:8px;background:linear-gradient(135deg,#2DD4BF,#22b3a1);color:#0c2d29;font-weight:700;font-size:12.5px;padding:0 14px;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 1px 3px rgba(45,212,191,.4)">✦ Ask Dovetail</button>
+    </header>
+    <!-- content -->
+    <main style="flex:1;overflow-y:auto;padding:20px 22px">
+      <!-- ============ DASHBOARD ============ -->
+      <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="margin-bottom:16px">
+            <div style="font-family:Fraunces,serif;font-size:22px;font-weight:600;color:#12284B">{{ dashGreeting }}</div>
+            <div style="font-size:13px;color:#5B6472;margin-top:3px">{{ dashSub }}</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+            <sc-for list="{{ dashTiles }}" as="tl" hint-placeholder-count="4">
+              <button onClick="{{ tl.go }}" style="text-align:left;background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px;cursor:pointer;box-shadow:0 1px 2px rgba(18,40,75,.05);border-left:3px solid {{ tl.accent }}">
+                <div style="font-size:11.5px;color:#5B6472;font-weight:600;text-transform:uppercase;letter-spacing:.4px">{{ tl.label }}</div>
+                <div style="font-size:22px;font-weight:700;color:#12284B;margin:5px 0 2px;font-variant-numeric:tabular-nums">{{ tl.value }}</div>
+                <div style="font-size:11.5px;color:{{ tl.subColor }}">{{ tl.sub }}</div>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:12px;align-items:start">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:16px 18px">
+              <div style="font-size:13.5px;font-weight:700;color:#12284B;margin-bottom:10px">{{ dashLeftTitle }}</div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ dashLeft }}" as="it" hint-placeholder-count="4">
+                  <button onClick="{{ it.go }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;background:{{ it.bg }};border:1px solid #eef2f8;border-radius:8px;padding:10px 12px;cursor:pointer;width:100%">
+                    <sc-if value="{{ it.ai }}" hint-placeholder-val="{{ false }}"><span style="flex:none;background:rgba(45,212,191,.16);color:#0d7a6d;font-size:10px;font-weight:700;border-radius:5px;padding:2px 6px;margin-top:1px">AI {{ it.conf }}</span></sc-if>
+                    <span style="flex:1;min-width:0">
+                      <span style="display:block;font-size:12.5px;font-weight:600;color:#222">{{ it.title }}</span>
+                      <span style="display:block;font-size:11.5px;color:#5B6472;margin-top:2px">{{ it.sub }}</span>
+                    </span>
+                    <span style="flex:none;font-size:12.5px;font-weight:700;color:{{ it.valColor }};font-variant-numeric:tabular-nums">{{ it.val }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:16px 18px">
+                <div style="font-size:13.5px;font-weight:700;color:#12284B;margin-bottom:10px;display:flex;align-items:center;gap:7px"><span style="width:7px;height:7px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2s infinite"></span>{{ dashRightTitle }}</div>
+                <div style="display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ dashRight }}" as="ag" hint-placeholder-count="4">
+                    <div style="display:flex;gap:9px;align-items:flex-start">
+                      <span style="flex:none;width:26px;height:26px;border-radius:7px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:9.5px;font-weight:700">{{ ag.icon }}</span>
+                      <span style="min-width:0"><span style="display:block;font-size:12px;font-weight:600;color:#222">{{ ag.name }}</span><span style="display:block;font-size:11px;color:#5B6472;margin-top:1px">{{ ag.sub }}</span></span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ dashHint }}" hint-placeholder-val="{{ false }}">
+                <div style="background:linear-gradient(135deg,rgba(45,212,191,.1),rgba(31,78,121,.06));border:1px solid rgba(45,212,191,.35);border-radius:11px;padding:14px 16px;font-size:12.5px;color:#12284B;line-height:1.55">{{ dashHint }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ TRANSACTIONS / GL ============ -->
+      <sc-if value="{{ isGL }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            <sc-for list="{{ glFilters }}" as="f" hint-placeholder-count="5">
+              <select value="{{ f.value }}" onChange="{{ f.set }}" style="height:30px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:11.5px;padding:0 7px;color:#222;cursor:pointer">
+                <sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+            </sc-for>
+            <span style="font-size:11.5px;color:#5B6472;margin-left:auto">{{ glCount }} transactions · July 2026 · click any row for both sides of the entry <span title="Every transaction has a debit and a credit — double-entry bookkeeping. Click to see both." style="cursor:help;color:#1F4E79">?</span></span>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:82px 1fr 130px 110px 90px 110px;padding:8px 14px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">
+              <span>Date</span><span>Description</span><span>Project</span><span>Department</span><span>Source</span><span style="text-align:right">Amount</span>
+            </div>
+            <sc-for list="{{ glRows }}" as="g" hint-placeholder-count="10">
+              <button onClick="{{ g.open }}" style="display:grid;grid-template-columns:82px 1fr 130px 110px 90px 110px;width:100%;text-align:left;padding:7px 14px;border:none;border-bottom:1px solid #f2f5fa;background:#fff;cursor:pointer;font-size:12px;align-items:center" style-hover="background:#F4F7FC">
+                <span style="color:#5B6472">{{ g.date }}</span>
+                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span style="font-weight:600;color:#222">{{ g.desc }}</span>
+                  <sc-if value="{{ g.ai }}" hint-placeholder-val="{{ false }}"><span style="margin-left:6px;background:rgba(45,212,191,.16);color:#0d7a6d;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px">AI {{ g.conf }}%</span></sc-if>
+                </span>
+                <span style="color:#5B6472;font-size:11.5px">{{ g.proj }}</span><span style="color:#5B6472;font-size:11.5px">{{ g.dept }}</span><span style="color:#5B6472;font-size:11.5px">{{ g.src }}</span>
+                <span style="text-align:right;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ g.amt }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ TRIAL BALANCE ============ -->
+      <sc-if value="{{ isTB }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;max-width:900px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+            <div style="font-size:12.5px;color:#5B6472">Trial balance <span title="A list of every account and its balance. Debits must equal credits — that's how the books prove they're complete." style="cursor:help;color:#1F4E79">?</span> · period activity · click any number to see the transactions behind it</div>
+            <span style="margin-left:auto;font-size:11px;color:#1E7A46;font-weight:700;background:rgba(30,122,70,.08);border-radius:6px;padding:4px 10px">✓ Debits = Credits · proven below</span>
+            <span style="font-size:10.5px;color:#5B6472">Generated in 1.2s</span>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:70px 1fr 140px 140px;padding:8px 14px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px"><span>Acct</span><span>Account name</span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span></div>
+            <sc-for list="{{ tbRows }}" as="t" hint-placeholder-count="14">
+              <button onClick="{{ t.open }}" style="display:grid;grid-template-columns:70px 1fr 140px 140px;width:100%;text-align:left;padding:6px 14px;border:none;border-bottom:1px solid #f2f5fa;background:{{ t.bg }};cursor:pointer;font-size:12px;align-items:center" style-hover="background:#F4F7FC">
+                <span style="font-weight:700;color:#1F4E79">{{ t.n }}</span>
+                <span style="color:#222">{{ t.name }}<sc-if value="{{ t.note }}" hint-placeholder-val="{{ false }}"><span style="margin-left:7px;font-size:10.5px;color:#0d7a6d;background:rgba(45,212,191,.1);border-radius:4px;padding:1px 6px">{{ t.note }}</span></sc-if></span>
+                <span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ t.dr }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ t.cr }}</span>
+              </button>
+            </sc-for>
+            <div style="display:grid;grid-template-columns:70px 1fr 140px 140px;padding:9px 14px;font-size:12.5px;font-weight:700;color:#12284B;background:#F4F7FC;border-top:2px solid #12284B"><span></span><span>Total — in balance ✓</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ tbDrTot }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ tbCrTot }}</span></div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ FINANCIAL STATEMENTS ============ -->
+      <sc-if value="{{ isFin }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;max-width:940px">
+          <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+            <sc-for list="{{ finTabs }}" as="ft" hint-placeholder-count="3">
+              <button onClick="{{ ft.go }}" style="border:1px solid {{ ft.bd }};background:{{ ft.bg }};color:{{ ft.fg }};border-radius:7px;font-size:12px;font-weight:600;padding:6px 14px;cursor:pointer">{{ ft.label }}</button>
+            </sc-for>
+            <span style="margin-left:auto;font-size:11.5px;color:#5B6472">July 2026 vs June 2026 · <b style="color:#0d7a6d">✦ AI explanations on material lines</b> · Generated in 1.2s</span>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <div style="display:grid;grid-template-columns:1fr 120px 120px 100px 34px;padding:8px 16px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px"><span>{{ finColLabel }}</span><span style="text-align:right">Jul 2026</span><span style="text-align:right">Jun 2026</span><span style="text-align:right">Δ %</span><span></span></div>
+            <sc-for list="{{ finRows }}" as="fr" hint-placeholder-count="12">
+              <div style="border-bottom:1px solid #f2f5fa;background:{{ fr.bg }}">
+                <div style="display:grid;grid-template-columns:1fr 120px 120px 100px 34px;padding:6px 16px;font-size:12px;align-items:center;font-weight:{{ fr.fw }}">
+                  <button onClick="{{ fr.open }}" style="border:none;background:none;text-align:left;cursor:pointer;font-size:12px;font-weight:{{ fr.fw }};color:#222;padding:0">{{ fr.name }}</button>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums">{{ fr.cur }}</span>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums;color:#5B6472">{{ fr.prior }}</span>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums;color:{{ fr.varColor }};font-weight:600">{{ fr.var }}</span>
+                  <sc-if value="{{ fr.explain }}" hint-placeholder-val="{{ false }}"><button onClick="{{ fr.explain }}" title="Explain this change" style="border:none;background:rgba(45,212,191,.16);color:#0d7a6d;border-radius:5px;font-size:11px;font-weight:700;width:24px;height:20px;cursor:pointer">✦</button></sc-if>
+                </div>
+                <sc-if value="{{ fr.note }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin:0 16px 8px;background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.3);border-radius:7px;padding:7px 11px;font-size:11.5px;color:#12284B">✦ {{ fr.note }}</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ AP ============ -->
+      <sc-if value="{{ isAP }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+            <button onClick="{{ apNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">+ New bill</button>
+            <button onClick="{{ apImportOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">⇪ Batch / Excel import</button>
+            <button onClick="{{ apScanOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">▣ Scan invoices</button>
+            <div style="margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#5B6472">
+              <span>Aging: <b style="color:#12284B">Current {{ apAging0 }}</b> · 1–30 {{ apAging30 }} · 31+ <b style="color:#C0392B">{{ apAging60 }}</b></span>
+            </div>
+          </div>
+          <!-- bill entry -->
+          <sc-if value="{{ apNew }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:16px 18px;margin-bottom:14px;animation:dvfade .2s ease">
+              <div style="font-size:13.5px;font-weight:700;color:#12284B;margin-bottom:12px">New bill — I'll suggest the coding as you type ✦</div>
+              <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Vendor
+                  <select value="{{ apVendor }}" onChange="{{ apSetVendor }}" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;background:#fff;font-size:12.5px;padding:0 8px;margin-top:4px">
+                    <sc-for list="{{ apVendorOpts }}" as="v" hint-placeholder-count="6"><option value="{{ v }}">{{ v }}</option></sc-for>
+                  </select></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Invoice #
+                  <input value="{{ apInvNo }}" onChange="{{ apSetInvNo }}" placeholder="e.g. 1263" style="width:100%;height:34px;border:1px solid {{ apInvBorder }};border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;outline:none"></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Date
+                  <input value="2026-07-28" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px"></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Amount
+                  <input value="{{ apAmt }}" onChange="{{ apSetAmt }}" placeholder="0.00" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;text-align:right"></label>
+              </div>
+              <sc-if value="{{ apDup }}" hint-placeholder-val="{{ false }}">
+                <div style="background:rgba(199,127,10,.08);border:1px solid rgba(199,127,10,.4);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;color:#7a4e06;display:flex;gap:10px;align-items:center;animation:dvfade .2s ease">
+                  <span style="font-size:16px">👋</span>
+                  <span style="flex:1"><b>Heads up</b> — invoice #1245 was already recorded for Bell Canada on 12 Jun. Want to open it?</span>
+                  <button onClick="{{ apOpenDup }}" style="border:1px solid #C77F0A;background:#fff;color:#C77F0A;border-radius:7px;font-size:11.5px;font-weight:700;padding:5px 12px;cursor:pointer">Open it</button>
+                </div>
+              </sc-if>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <span style="font-size:11.5px;color:#5B6472;font-weight:600">Suggested coding:</span>
+                <sc-for list="{{ apSuggest }}" as="sg" hint-placeholder-count="3">
+                  <span title="{{ sg.why }}" style="display:inline-flex;align-items:center;gap:6px;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.4);border-radius:7px;padding:5px 10px;font-size:11.5px;color:#12284B;cursor:help">
+                    <b>{{ sg.label }}</b><span style="background:#2DD4BF;color:#0c2d29;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px">{{ sg.conf }}%</span>
+                  </span>
+                </sc-for>
+                <span style="font-size:11px;color:#5B6472;font-style:italic">{{ apSuggestWhy }}</span>
+                <button onClick="{{ apSave }}" style="margin-left:auto;border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer">✓ Looks right — save bill</button>
+              </div>
+            </div>
+          </sc-if>
+          <!-- queue -->
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <sc-for list="{{ apTabs }}" as="at" hint-placeholder-count="4">
+              <button onClick="{{ at.go }}" style="border:1px solid {{ at.bd }};background:{{ at.bg }};color:{{ at.fg }};border-radius:7px;font-size:11.5px;font-weight:600;padding:5px 12px;cursor:pointer">{{ at.label }}</button>
+            </sc-for>
+            <span style="margin-left:auto;font-size:11px;color:#5B6472;align-self:center">≥95% auto-posts (still logged) · 80–95% queues for review · &lt;80% escalates with a question</span>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <sc-for list="{{ apRows }}" as="b" hint-placeholder-count="8">
+              <div style="display:flex;gap:12px;padding:10px 16px;border-bottom:1px solid #f2f5fa;align-items:center;background:{{ b.bg }}">
+                <span style="flex:none;width:44px;text-align:center;background:{{ b.chipBg }};color:{{ b.chipFg }};font-size:10.5px;font-weight:700;border-radius:5px;padding:3px 0">{{ b.conf }}%</span>
+                <span style="flex:1;min-width:0">
+                  <span style="font-size:12.5px;font-weight:600;color:#222">{{ b.vendor }} · #{{ b.invno }}</span>
+                  <sc-if value="{{ b.note }}" hint-placeholder-val="{{ false }}"><span style="margin-left:7px;background:rgba(30,122,70,.1);color:#1E7A46;font-size:9.5px;font-weight:700;border-radius:4px;padding:2px 6px">✓ {{ b.note }}</span></sc-if>
+                  <span style="display:block;font-size:11px;color:#5B6472;margin-top:2px">{{ b.line2 }}</span>
+                  <sc-if value="{{ b.match }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:10.5px;color:#C77F0A;margin-top:2px;font-weight:600">{{ b.match }}</span></sc-if>
+                </span>
+                <span style="flex:none;font-size:12.5px;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ b.amt }}</span>
+                <span style="flex:none;width:190px;display:flex;gap:5px;justify-content:flex-end">
+                  <sc-if value="{{ b.actions }}" hint-placeholder-val="{{ false }}">
+                    <button onClick="{{ b.approve }}" style="border:none;background:#1E7A46;color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:5px 10px;cursor:pointer">✓ Approve</button>
+                    <button style="border:1px solid #d7dfec;background:#fff;color:#222;border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer">Edit</button>
+                    <button style="border:1px solid #e6c9c4;background:#fff;color:#C0392B;border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer">Reject</button>
+                  </sc-if>
+                  <sc-if value="{{ b.statusLabel }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:600;color:{{ b.statusColor }}">{{ b.statusLabel }}</span></sc-if>
+                </span>
+              </div>
+            </sc-for>
+            <div style="padding:9px 16px;font-size:11px;color:#5B6472;background:#F4F7FC">These bills roll up through the Vendors sub-ledger into the single <b>2000 Accounts Payable</b> figure on the trial balance. <a href="#" onClick="{{ apGoTB }}">See it there →</a></div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- AP modals -->
+      <sc-if value="{{ apModal }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ apModalClose }}" style="position:fixed;inset:0;background:rgba(18,40,75,.45);z-index:60;display:grid;place-items:center;padding:30px">
+          <div onClick="{{ stop }}" style="background:#fff;border-radius:14px;width:min(720px,92vw);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(18,40,75,.3);animation:dvfade .2s ease">
+            <div style="padding:15px 20px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center">
+              <div style="flex:1"><div style="font-family:Fraunces,serif;font-size:16px;font-weight:600;color:#12284B">{{ apModalTitle }}</div><div style="font-size:11.5px;color:#5B6472;margin-top:2px">{{ apModalSub }}</div></div>
+              <button onClick="{{ apModalClose }}" style="border:none;background:#F4F7FC;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#5B6472">✕</button>
+            </div>
+            <div style="flex:1;overflow-y:auto;padding:16px 20px">
+              <sc-if value="{{ apModalDrop }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ apModalParse }}" style="width:100%;border:2px dashed #b9c8de;background:#F4F7FC;border-radius:12px;padding:34px;text-align:center;cursor:pointer;color:#5B6472;font-size:13px">
+                  {{ apModalDropText }}<br><span style="font-size:11.5px;color:#8fa3c0">(click to simulate — this is a demo)</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{ apModalRows }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:#1E7A46;font-weight:600;margin-bottom:10px">✓ Parsed and coded — please give these a quick check before posting:</div>
+                <div style="border:1px solid #e3e9f2;border-radius:10px;overflow:hidden">
+                  <sc-for list="{{ apModalRows }}" as="mr" hint-placeholder-count="5">
+                    <div style="display:flex;gap:10px;padding:8px 14px;border-bottom:1px solid #f2f5fa;font-size:12px;align-items:center">
+                      <span style="flex:none;width:42px;text-align:center;background:rgba(45,212,191,.16);color:#0d7a6d;font-size:10px;font-weight:700;border-radius:5px;padding:2px 0">{{ mr.conf }}%</span>
+                      <span style="flex:1"><b>{{ mr.vendor }}</b> · {{ mr.desc }}<span style="display:block;font-size:10.5px;color:#5B6472">{{ mr.coding }}</span></span>
+                      <span style="font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ mr.amt }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+                  <button onClick="{{ apModalClose }}" style="border:1px solid #d7dfec;background:#fff;border-radius:8px;font-size:12px;padding:8px 14px;cursor:pointer;color:#222">Cancel</button>
+                  <button onClick="{{ apModalPost }}" style="border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer">✓ Post {{ apModalCount }} bills to review queue</button>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ AR ============ -->
+      <sc-if value="{{ isAR }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:start">
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center"><b style="font-size:13px;color:#12284B">Customer invoices</b><span style="margin-left:auto;font-size:11px;color:#5B6472">Aging: {{ arAging }}</span></div>
+            <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:7px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Customer / invoice</span><span style="text-align:right">Amount</span><span>Age</span><span>Status</span><span></span></div>
+            <sc-for list="{{ arRows }}" as="a" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:8px 16px;border-bottom:1px solid #f2f5fa;font-size:12px;align-items:center">
+                <span><b>{{ a.cust }}</b><span style="display:block;font-size:10.5px;color:#5B6472">{{ a.inv }} · due {{ a.due }}</span></span>
+                <span style="text-align:right;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ a.amt }}</span>
+                <span style="font-size:11px;color:{{ a.ageColor }};font-weight:600">{{ a.age }}</span>
+                <span style="font-size:11px;color:{{ a.stColor }};font-weight:600">{{ a.status }}</span>
+                <sc-if value="{{ a.matched }}" hint-placeholder-val="{{ false }}"><span style="font-size:10px;color:#0d7a6d;background:rgba(45,212,191,.12);border-radius:4px;padding:2px 6px;text-align:center">AI cash-matched</span></sc-if>
+              </div>
+            </sc-for>
+            <div style="padding:9px 16px;font-size:11px;color:#5B6472;background:#F4F7FC">Payments are auto-matched to invoices by the Treasury Agent — 1 exception this month (a 1,240 partial from Meridian, confirmed by a human). <a href="#" onClick="{{ arGoBank }}">See cash application →</a></div>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+            <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:4px">Collections — drafted for you ✦</div>
+            <div style="font-size:11px;color:#5B6472;margin-bottom:12px">The AR Agent drafted these reminders. Nothing sends without your OK.</div>
+            <sc-for list="{{ arDrafts }}" as="d" hint-placeholder-count="2">
+              <div style="border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.05);border-radius:10px;padding:11px 13px;margin-bottom:10px">
+                <div style="display:flex;gap:7px;align-items:center;margin-bottom:6px"><span style="background:#2DD4BF;color:#0c2d29;font-size:9.5px;font-weight:700;border-radius:4px;padding:2px 6px">AI draft</span><b style="font-size:12px;color:#12284B">{{ d.cust }}</b><span style="margin-left:auto;font-size:10.5px;color:#C77F0A;font-weight:700">{{ d.days }} days late</span></div>
+                <div style="font-size:11.5px;color:#222;line-height:1.5;background:#fff;border:1px solid #eef2f8;border-radius:7px;padding:8px 10px;margin-bottom:8px">{{ d.preview }}</div>
+                <div style="display:flex;gap:6px"><button onClick="{{ d.send }}" style="border:none;background:#1E7A46;color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer">✓ Approve &amp; send</button><button style="border:1px solid #d7dfec;background:#fff;border-radius:6px;font-size:11px;padding:5px 10px;cursor:pointer;color:#222">Edit wording</button></div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ BANKING ============ -->
+      <sc-if value="{{ isBank }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px">
+            <sc-for list="{{ bankCards }}" as="bc" hint-placeholder-count="3">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="display:flex;align-items:center;gap:8px"><b style="font-size:12.5px;color:#12284B">{{ bc.name }}</b><span style="margin-left:auto;font-size:10px;color:#5B6472;background:#F4F7FC;border-radius:4px;padding:2px 7px">{{ bc.feed }}</span></div>
+                <div style="font-size:19px;font-weight:700;color:#12284B;margin:7px 0 3px;font-variant-numeric:tabular-nums">{{ bc.bal }}</div>
+                <div style="font-size:11px;color:#5B6472">{{ bc.bank }} · {{ bc.matched }} of {{ bc.lines }} lines matched</div>
+                <div style="height:6px;background:#eef2f8;border-radius:3px;margin-top:8px;overflow:hidden"><div style="height:100%;background:{{ bc.barColor }};width:{{ bc.pct }};border-radius:3px"></div></div>
+                <div style="font-size:10.5px;color:{{ bc.recColor }};font-weight:700;margin-top:6px">{{ bc.recLabel }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:8px">
+              <span style="width:7px;height:7px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2s infinite"></span>
+              <b style="font-size:13px;color:#12284B">Continuous reconciliation — 93% auto-matched this month</b>
+              <span style="margin-left:auto;font-size:11px;color:#5B6472">{{ bankOpen }} items need a human — that's you 🙂</span>
+            </div>
+            <sc-for list="{{ bankEx }}" as="ex" hint-placeholder-count="4">
+              <div style="display:flex;gap:12px;padding:10px 16px;border-bottom:1px solid #f2f5fa;align-items:center">
+                <span style="flex:none;width:44px;text-align:center;background:{{ ex.chipBg }};color:{{ ex.chipFg }};font-size:10.5px;font-weight:700;border-radius:5px;padding:3px 0">{{ ex.conf }}%</span>
+                <span style="flex:1"><b style="font-size:12.5px;color:#222">{{ ex.desc }}</b> <span style="font-size:11px;color:#5B6472">· {{ ex.date }}</span><span style="display:block;font-size:11.5px;color:#5B6472;margin-top:2px">✦ {{ ex.ask }}</span></span>
+                <span style="flex:none;font-weight:700;color:{{ ex.amtColor }};font-variant-numeric:tabular-nums;font-size:12.5px">{{ ex.amt }}</span>
+                <span style="flex:none;display:flex;gap:5px">
+                  <button onClick="{{ ex.approve }}" style="border:none;background:#1E7A46;color:#fff;border-radius:6px;font-size:11px;font-weight:700;padding:5px 10px;cursor:pointer">✓ Approve</button>
+                  <button style="border:1px solid #d7dfec;background:#fff;border-radius:6px;font-size:11px;padding:5px 9px;cursor:pointer;color:#222">Not this</button>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ REPORTS & EXCEL ============ -->
+      <sc-if value="{{ isRep }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <sc-for list="{{ repTabs }}" as="rt" hint-placeholder-count="5">
+              <button onClick="{{ rt.go }}" style="border:1px solid {{ rt.bd }};background:{{ rt.bg }};color:{{ rt.fg }};border-radius:7px;font-size:12px;font-weight:600;padding:6px 13px;cursor:pointer">{{ rt.label }}</button>
+            </sc-for>
+          </div>
+          <!-- XLGL -->
+          <sc-if value="{{ repXL }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+              <div style="display:flex;gap:6px;padding:8px 12px;background:#F4F7FC;border-bottom:1px solid #e3e9f2;align-items:center">
+                <sc-for list="{{ xlRibbon }}" as="rb" hint-placeholder-count="5">
+                  <button onClick="{{ rb.go }}" style="border:1px solid #d7dfec;background:#fff;color:#12284B;border-radius:6px;font-size:11px;font-weight:600;padding:5px 10px;cursor:pointer">{{ rb.label }}</button>
+                </sc-for>
+                <span style="margin-left:auto;font-size:10.5px;color:#0d7a6d;font-weight:600">✦ Live XLGL formulas — work where you already work</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #e3e9f2;background:#fff">
+                <span style="font-size:11px;font-weight:700;color:#5B6472;background:#F4F7FC;border:1px solid #d7dfec;border-radius:4px;padding:2px 8px;font-family:ui-monospace,monospace">{{ xlSelRef }}</span>
+                <span style="font-size:11.5px;font-family:ui-monospace,monospace;color:#12284B;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ xlSelFormula }}</span>
+                <button onClick="{{ xlCopy }}" style="border:none;background:rgba(45,212,191,.14);color:#0d7a6d;border-radius:5px;font-size:10.5px;font-weight:700;padding:4px 9px;cursor:pointer">⧉ Copy formula</button>
+              </div>
+              <div style="overflow-x:auto">
+                <div style="display:grid;grid-template-columns:34px 230px repeat(3,130px) 96px;font-size:12px;min-width:750px">
+                  <div style="background:#F4F7FC;border-bottom:1px solid #d7dfec;border-right:1px solid #d7dfec"></div>
+                  <sc-for list="{{ xlColHead }}" as="ch" hint-placeholder-count="5"><div style="background:#F4F7FC;border-bottom:1px solid #d7dfec;border-right:1px solid #e8edf5;padding:4px 8px;font-weight:700;color:#5B6472;text-align:center;font-size:10.5px">{{ ch }}</div></sc-for>
+                  <sc-for list="{{ xlRows }}" as="xr" hint-placeholder-count="11">
+                    <div style="background:#F4F7FC;border-right:1px solid #d7dfec;border-bottom:1px solid #e8edf5;padding:4px 6px;font-size:10px;color:#5B6472;text-align:center;font-weight:600">{{ xr.num }}</div>
+                    <sc-for list="{{ xr.cells }}" as="cell" hint-placeholder-count="5">
+                      <button onClick="{{ cell.sel }}" style="border:none;border-right:1px solid #eef2f8;border-bottom:1px solid #eef2f8;padding:5px 9px;text-align:{{ cell.align }};font-size:11.5px;background:{{ cell.bg }};cursor:cell;font-weight:{{ cell.fw }};color:{{ cell.color }};font-variant-numeric:tabular-nums;outline:{{ cell.outline }};font-family:{{ cell.font }}">{{ cell.t }}</button>
+                    </sc-for>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:8px 12px;background:#F4F7FC;font-size:11px;color:#5B6472;border-top:1px solid #e3e9f2">Click a cell to see its formula · <b>double-click (or Drill Down) any value</b> to see the transactions behind it — just like XLGL, but the drill-down is built in.</div>
+            </div>
+          </sc-if>
+          <!-- CHANGE ANALYSIS -->
+          <sc-if value="{{ repCH }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+              <span style="font-size:12px;color:#5B6472">Compare</span>
+              <select value="{{ chBase }}" onChange="{{ chSetBase }}" style="height:30px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:11.5px;padding:0 7px"><option value="2026-06">Jun 2026</option><option value="2025-07">Jul 2025</option></select>
+              <span style="font-size:12px;color:#5B6472">→ Jul 2026 · ranked by movement · every line explains itself</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:9px;max-width:880px">
+              <sc-for list="{{ chRows }}" as="c" hint-placeholder-count="5">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:13px 16px">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="flex:none;width:52px;text-align:center;font-size:12px;font-weight:800;color:{{ c.dirColor }};background:{{ c.dirBg }};border-radius:7px;padding:5px 0">{{ c.pct }}</span>
+                    <span style="flex:1"><b style="font-size:13px;color:#12284B">{{ c.name }}</b><span style="font-size:11.5px;color:#5B6472"> · {{ c.from }} → {{ c.to }}</span></span>
+                    <span style="font-size:12.5px;font-weight:700;color:{{ c.dirColor }};font-variant-numeric:tabular-nums">{{ c.delta }}</span>
+                    <button onClick="{{ c.open }}" style="border:1px solid #1F4E79;background:#fff;color:#1F4E79;border-radius:6px;font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer">View entries</button>
+                  </div>
+                  <div style="margin-top:8px;background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.28);border-radius:8px;padding:8px 12px;font-size:12px;color:#12284B;line-height:1.5">✦ {{ c.why }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+          <!-- REPORT BUILDER -->
+          <sc-if value="{{ repRB }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:230px 1fr;gap:14px;align-items:start">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px">
+                <div style="font-size:12px;font-weight:700;color:#12284B;margin-bottom:9px">Dimensions — tap to add</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+                  <sc-for list="{{ rbDims }}" as="dm" hint-placeholder-count="6">
+                    <button onClick="{{ dm.go }}" style="border:1px solid {{ dm.bd }};background:{{ dm.bg }};color:{{ dm.fg }};border-radius:16px;font-size:11px;font-weight:600;padding:4px 11px;cursor:pointer">{{ dm.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="font-size:12px;font-weight:700;color:#12284B;margin-bottom:7px">Period</div>
+                <div style="font-size:11.5px;color:#5B6472;margin-bottom:14px">July 2026 vs prior month</div>
+                <button onClick="{{ rbSave }}" style="width:100%;border:none;background:#12284B;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px;cursor:pointer">Save as custom report</button>
+              </div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+                <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2"><b style="font-size:13px;color:#12284B">Expenses by {{ rbBy }}</b><span style="font-size:11px;color:#5B6472"> · July 2026 · generated in 0.8s</span></div>
+                <sc-for list="{{ rbRows }}" as="rr" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid #f2f5fa">
+                    <span style="flex:none;width:150px;font-size:12px;font-weight:600;color:#222">{{ rr.label }}</span>
+                    <span style="flex:1;height:16px;background:#eef2f8;border-radius:4px;overflow:hidden"><span style="display:block;height:100%;background:#1F4E79;border-radius:4px;width:{{ rr.pct }}"></span></span>
+                    <span style="flex:none;width:110px;text-align:right;font-size:12px;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ rr.amt }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <!-- BUDGET -->
+          <sc-if value="{{ repBU }}" hint-placeholder-val="{{ false }}">
+            <div style="max-width:820px">
+              <div style="display:flex;gap:8px;margin-bottom:10px"><button onClick="{{ buImport }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:7px 13px;cursor:pointer">⇪ Import budget from Excel</button><span style="font-size:11px;color:#5B6472;align-self:center">Last import: budget-fy2026.xlsx · 4 May 2026</span></div>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+                <div style="display:grid;grid-template-columns:1fr 110px 110px 110px 90px;padding:8px 16px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px"><span>Line</span><span style="text-align:right">Actual</span><span style="text-align:right">Budget</span><span style="text-align:right">Variance</span><span style="text-align:right">%</span></div>
+                <sc-for list="{{ buRows }}" as="bu" hint-placeholder-count="7">
+                  <div style="display:grid;grid-template-columns:1fr 110px 110px 110px 90px;padding:7px 16px;font-size:12px;border-bottom:1px solid #f2f5fa;font-weight:{{ bu.fw }};background:{{ bu.bg }}">
+                    <span>{{ bu.name }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ bu.act }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;color:#5B6472">{{ bu.bud }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;color:{{ bu.vc }}">{{ bu.var }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;color:{{ bu.vc }};font-weight:600">{{ bu.pct }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <!-- BOARD PACK -->
+          <sc-if value="{{ repBP }}" hint-placeholder-val="{{ false }}">
+            <div style="max-width:700px">
+              <button onClick="{{ bpGen }}" style="border:none;background:linear-gradient(135deg,#2DD4BF,#22b3a1);color:#0c2d29;border-radius:9px;font-size:13px;font-weight:700;padding:10px 18px;cursor:pointer;margin-bottom:14px">✦ Generate board pack — July 2026</button>
+              <sc-if value="{{ bpReady }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:20px 24px;animation:dvfade .3s ease">
+                  <div style="font-family:Fraunces,serif;font-size:18px;font-weight:600;color:#12284B;margin-bottom:4px">Algo8 Group — Board Pack</div>
+                  <div style="font-size:11.5px;color:#5B6472;margin-bottom:14px">July 2026 · consolidated (CAD) · draft for review</div>
+                  <div style="font-size:12.5px;color:#222;line-height:1.7;white-space:pre-line">{{ bpText }}</div>
+                  <div style="display:flex;gap:8px;margin-top:14px"><button onClick="{{ bpExport }}" style="border:none;background:#12284B;color:#fff;border-radius:7px;font-size:11.5px;font-weight:700;padding:7px 14px;cursor:pointer">Export PDF</button><button style="border:1px solid #d7dfec;background:#fff;border-radius:7px;font-size:11.5px;padding:7px 13px;cursor:pointer;color:#222">Edit narrative</button></div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <!-- ============ CONTROLS & AUDIT ============ -->
+      <sc-if value="{{ isCtl }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease">
+          <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+            <sc-for list="{{ ctlTabs }}" as="ct" hint-placeholder-count="4">
+              <button onClick="{{ ct.go }}" style="border:1px solid {{ ct.bd }};background:{{ ct.bg }};color:{{ ct.fg }};border-radius:7px;font-size:12px;font-weight:600;padding:6px 13px;cursor:pointer">{{ ct.label }}</button>
+            </sc-for>
+            <span style="margin-left:auto;font-size:11px;color:#5B6472">Principle-based (COSO): risk → control objective → assertion <span title="Assertions: E/O existence & occurrence · C completeness · V&A valuation & accuracy · R&O rights & obligations · P&D presentation & disclosure" style="cursor:help;color:#1F4E79">?</span></span>
+          </div>
+          <!-- INTERNAL -->
+          <sc-if value="{{ ctlInternal }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+              <sc-for list="{{ ctlStats }}" as="cs" hint-placeholder-count="4">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:10px;padding:11px 14px;border-left:3px solid {{ cs.accent }}"><div style="font-size:10.5px;color:#5B6472;font-weight:700;text-transform:uppercase;letter-spacing:.4px">{{ cs.label }}</div><div style="font-size:19px;font-weight:700;color:#12284B;margin-top:3px">{{ cs.value }}</div></div>
+              </sc-for>
+            </div>
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden;margin-bottom:12px">
+              <div style="display:grid;grid-template-columns:44px 110px 1fr 1fr 64px 90px 100px 96px;padding:8px 14px;background:#12284B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px"><span>ID</span><span>Process</span><span>Inherent risk</span><span>Control objective</span><span>Assert.</span><span>Frequency</span><span>Owner</span><span>Status</span></div>
+              <sc-for list="{{ ctlRows }}" as="c" hint-placeholder-count="15">
+                <button onClick="{{ c.open }}" style="display:grid;grid-template-columns:44px 110px 1fr 1fr 64px 90px 100px 96px;width:100%;text-align:left;padding:7px 14px;border:none;border-bottom:1px solid #f2f5fa;background:{{ c.bg }};cursor:pointer;font-size:11.5px;align-items:center" style-hover="background:#F4F7FC">
+                  <span style="font-weight:700;color:#1F4E79">{{ c.id }}</span><span style="color:#5B6472">{{ c.process }}</span>
+                  <span style="color:#222">{{ c.risk }}</span><span style="color:#222">{{ c.objective }}</span>
+                  <span style="font-weight:600;color:#5B6472">{{ c.assertion }}</span><span style="color:#5B6472">{{ c.freq }}</span><span style="color:#5B6472;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.owner }}</span>
+                  <span style="font-weight:700;color:{{ c.stColor }}">{{ c.stLabel }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start">
+              <sc-if value="{{ ctlSel }}" hint-placeholder-val="{{ false }}">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                  <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:4px">Evidence vault — {{ ctlSelId }}</div>
+                  <div style="font-size:11.5px;color:#5B6472;margin-bottom:10px">{{ ctlSelName }} · last tested {{ ctlSelTested }}</div>
+                  <div style="background:rgba(45,212,191,.07);border:1px solid rgba(45,212,191,.3);border-radius:8px;padding:9px 12px;font-size:12px;color:#12284B;margin-bottom:10px">✦ Auto-collected: {{ ctlSelEvidence }}</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <sc-for list="{{ ctlSelDocs }}" as="doc" hint-placeholder-count="3">
+                      <button onClick="{{ doc.view }}" style="display:flex;gap:8px;align-items:center;border:1px solid #eef2f8;background:#F4F7FC;border-radius:7px;padding:7px 11px;cursor:pointer;font-size:11.5px;text-align:left;color:#222"><span>📎</span><span style="flex:1">{{ doc.name }}</span><span style="color:#1F4E79;font-weight:600">View</span></button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:4px">Manual-control attestation</div>
+                <div style="font-size:11.5px;color:#5B6472;margin-bottom:10px">For controls that live outside the system — capture the evidence here.</div>
+                <div style="border:1px solid #eef2f8;border-radius:9px;padding:11px 13px">
+                  <b style="font-size:12px;color:#12284B">C-12 · CFO reviews monthly reporting package</b>
+                  <div style="font-size:11.5px;color:#5B6472;margin:5px 0 9px">July 2026 · owner: A. Chen (CFO)</div>
+                  <sc-if value="{{ ctlAttested }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#1E7A46;font-weight:700">✓ Attested 28 Jul 2026, 14:02 · july-review-notes.pdf attached · logged immutably</div></sc-if>
+                  <sc-if value="{{ ctlNotAttested }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;gap:7px"><button onClick="{{ ctlAttest }}" style="border:none;background:#1E7A46;color:#fff;border-radius:7px;font-size:11.5px;font-weight:700;padding:6px 13px;cursor:pointer">✓ I reviewed it — attest &amp; attach</button><button style="border:1px solid #d7dfec;background:#fff;border-radius:7px;font-size:11.5px;padding:6px 12px;cursor:pointer;color:#222">Delegate</button></div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <!-- EXTERNAL -->
+          <sc-if value="{{ ctlExternal }}" hint-placeholder-val="{{ false }}">
+            <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px;align-items:start">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:16px 18px">
+                <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:3px">End-to-end trace — existence &amp; completeness</div>
+                <div style="font-size:11.5px;color:#5B6472;margin-bottom:14px">Sample: Meridian Foods Group, July revenue · every step is clickable and hash-verified</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ traceRows }}" as="tr" hint-placeholder-count="6">
+                    <button onClick="{{ tr.open }}" style="display:flex;gap:12px;text-align:left;border:none;background:none;cursor:pointer;padding:0 0 4px">
+                      <span style="flex:none;display:flex;flex-direction:column;align-items:center;width:26px">
+                        <span style="width:26px;height:26px;border-radius:50%;background:{{ tr.dotBg }};color:{{ tr.dotFg }};display:grid;place-items:center;font-size:11px;font-weight:800">{{ tr.n }}</span>
+                        <sc-if value="{{ tr.line }}" hint-placeholder-val="{{ true }}"><span style="width:2px;flex:1;min-height:18px;background:#d7dfec"></span></sc-if>
+                      </span>
+                      <span style="flex:1;padding-bottom:12px">
+                        <span style="display:block;font-size:10.5px;font-weight:700;color:#0d7a6d;text-transform:uppercase;letter-spacing:.4px">{{ tr.step }}</span>
+                        <span style="display:block;font-size:12.5px;font-weight:600;color:#222;margin-top:1px">{{ tr.label }}</span>
+                        <span style="display:block;font-size:11px;color:#5B6472;margin-top:2px">{{ tr.detail }}</span>
+                      </span>
+                      <span style="flex:none;font-size:10.5px;color:#5B6472;padding-top:2px">{{ tr.date }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                  <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:9px">PBC requests</div>
+                  <sc-for list="{{ pbcRows }}" as="pb" hint-placeholder-count="4">
+                    <div style="display:flex;gap:8px;font-size:11.5px;padding:6px 0;border-bottom:1px dashed #eef2f8;align-items:center"><span style="flex:1;color:#222">{{ pb.name }}</span><span style="font-weight:700;color:{{ pb.color }}">{{ pb.status }}</span></div>
+                  </sc-for>
+                </div>
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                  <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:9px">Third-party confirmations</div>
+                  <sc-for list="{{ confRows }}" as="cf" hint-placeholder-count="3">
+                    <div style="display:flex;gap:8px;font-size:11.5px;padding:6px 0;border-bottom:1px dashed #eef2f8;align-items:center"><span style="flex:1;color:#222">{{ cf.name }}</span><span style="font-weight:700;color:{{ cf.color }}">{{ cf.status }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <!-- TAX -->
+          <sc-if value="{{ ctlTax }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden;max-width:820px">
+              <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2"><b style="font-size:13px;color:#12284B">Tax view — July 2026</b><span style="font-size:11px;color:#5B6472"> · VAT/GST collected vs paid, by entity · income tax accrual shown separately</span></div>
+              <div style="display:grid;grid-template-columns:1fr 120px 120px 120px 100px;padding:8px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Entity</span><span style="text-align:right">Tax collected</span><span style="text-align:right">Input tax</span><span style="text-align:right">Net payable</span><span style="text-align:right">Filing</span></div>
+              <sc-for list="{{ taxRows }}" as="tx" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:1fr 120px 120px 120px 100px;padding:8px 16px;font-size:12px;border-bottom:1px solid #f2f5fa;align-items:center">
+                  <span><b>{{ tx.name }}</b><span style="display:block;font-size:10.5px;color:#5B6472">{{ tx.regime }}</span></span>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums">{{ tx.out }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ tx.inp }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#12284B">{{ tx.net }}</span>
+                  <span style="text-align:right;font-size:11px;font-weight:600;color:{{ tx.fColor }}">{{ tx.filing }}</span>
+                </div>
+              </sc-for>
+              <div style="padding:10px 16px;font-size:11px;color:#5B6472;background:#F4F7FC">Statutory filing &amp; iXBRL: <b>coming next</b> — this view already ties every tax figure to its transactions.</div>
+            </div>
+          </sc-if>
+          <!-- AUDIT TRAIL -->
+          <sc-if value="{{ ctlTrail }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+              <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:10px">
+                <b style="font-size:13px;color:#12284B">Immutable audit trail</b><span style="font-size:11px;color:#5B6472">append-only · every entry hash-chained to the previous one</span>
+                <button onClick="{{ trailVerify }}" style="margin-left:auto;border:1px solid #1F4E79;background:#fff;color:#1F4E79;border-radius:7px;font-size:11.5px;font-weight:600;padding:6px 13px;cursor:pointer">🛡 Independently verify the chain</button>
+                <sc-if value="{{ trailOK }}" hint-placeholder-val="{{ false }}"><span style="color:#1E7A46;font-size:12px;font-weight:700;animation:dvfade .3s ease">✓ 1,412 entries verified — chain intact</span></sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:130px 150px 1fr 150px 110px;padding:7px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Timestamp</span><span>Actor</span><span>Action</span><span>Before → after</span><span>Hash</span></div>
+              <sc-for list="{{ trailRows }}" as="te" hint-placeholder-count="10">
+                <div style="display:grid;grid-template-columns:130px 150px 1fr 150px 110px;padding:7px 16px;font-size:11.5px;border-bottom:1px solid #f2f5fa;align-items:center">
+                  <span style="color:#5B6472">{{ te.when }}</span>
+                  <span><sc-if value="{{ te.ai }}" hint-placeholder-val="{{ false }}"><span style="background:rgba(45,212,191,.16);color:#0d7a6d;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px;margin-right:5px">AI</span></sc-if><span style="font-weight:600;color:#222">{{ te.actor }}</span></span>
+                  <span style="color:#222">{{ te.action }}</span><span style="color:#5B6472;font-size:11px">{{ te.change }}</span>
+                  <span style="font-family:ui-monospace,monospace;font-size:10px;color:#8fa3c0">{{ te.hash }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <!-- ============ AGENTS ============ -->
+      <sc-if value="{{ isAg }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:1.2fr 1fr;gap:14px;align-items:start">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:10px;display:flex;gap:7px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:#2DD4BF;animation:dvpulse 2s infinite"></span>Ambient agents — what they did today</div>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <sc-for list="{{ agRows }}" as="ag" hint-placeholder-count="7">
+                <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:12px 15px;display:flex;gap:11px;align-items:flex-start">
+                  <span style="flex:none;width:32px;height:32px;border-radius:9px;background:rgba(45,212,191,.14);color:#0d7a6d;display:grid;place-items:center;font-size:10.5px;font-weight:800">{{ ag.icon }}</span>
+                  <span style="flex:1"><b style="font-size:12.5px;color:#12284B">{{ ag.name }}</b><span style="display:block;font-size:11.5px;color:#5B6472;margin-top:2px">{{ ag.today }}</span></span>
+                  <span style="flex:none;font-size:10.5px;color:#1E7A46;font-weight:700;background:rgba(30,122,70,.08);border-radius:5px;padding:3px 8px">Within mandate ✓</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+            <div style="display:flex;align-items:center;margin-bottom:10px"><b style="font-size:13px;color:#12284B">My review queue</b><button onClick="{{ agBulk }}" style="margin-left:auto;border:none;background:#1E7A46;color:#fff;border-radius:7px;font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer">✓ Approve all high-confidence ({{ agHi }})</button></div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <sc-for list="{{ agQueue }}" as="qi" hint-placeholder-count="6">
+                <div style="display:flex;gap:9px;border:1px solid #eef2f8;border-radius:8px;padding:8px 11px;align-items:center">
+                  <span style="flex:none;width:40px;text-align:center;background:{{ qi.chipBg }};color:{{ qi.chipFg }};font-size:10px;font-weight:700;border-radius:5px;padding:2px 0">{{ qi.conf }}%</span>
+                  <span style="flex:1;font-size:11.5px;color:#222">{{ qi.what }}</span>
+                  <button onClick="{{ qi.approve }}" style="border:none;background:#F4F7FC;color:#1E7A46;border-radius:6px;font-size:11px;font-weight:700;padding:4px 9px;cursor:pointer">✓</button>
+                </div>
+              </sc-for>
+              <sc-if value="{{ agEmpty }}" hint-placeholder-val="{{ false }}"><div style="font-size:12px;color:#1E7A46;font-weight:600;padding:10px;text-align:center">All caught up — nice work! 🎉</div></sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ SETTINGS ============ -->
+      <sc-if value="{{ isSet }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;max-width:980px">
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:16px 18px">
+            <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:3px">Conversational persona</div>
+            <div style="font-size:11.5px;color:#5B6472;margin-bottom:13px">How "Ask Dovetail" talks to your team.</div>
+            <div style="font-size:11px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Tone</div>
+            <div style="display:flex;gap:7px;margin-bottom:14px">
+              <sc-for list="{{ setTones }}" as="tn" hint-placeholder-count="3">
+                <button onClick="{{ tn.go }}" style="border:1px solid {{ tn.bd }};background:{{ tn.bg }};color:{{ tn.fg }};border-radius:8px;font-size:11.5px;font-weight:600;padding:7px 12px;cursor:pointer">{{ tn.label }}</button>
+              </sc-for>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Response length</div>
+            <div style="display:flex;gap:7px;margin-bottom:14px">
+              <sc-for list="{{ setLens }}" as="ln" hint-placeholder-count="3">
+                <button onClick="{{ ln.go }}" style="border:1px solid {{ ln.bd }};background:{{ ln.bg }};color:{{ ln.fg }};border-radius:8px;font-size:11.5px;font-weight:600;padding:7px 12px;cursor:pointer">{{ ln.label }}</button>
+              </sc-for>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:7px">Words to avoid</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+              <sc-for list="{{ setAvoid }}" as="av" hint-placeholder-count="4">
+                <span style="display:inline-flex;align-items:center;gap:6px;background:#F4F7FC;border:1px solid #e3e9f2;border-radius:14px;padding:4px 10px;font-size:11.5px;color:#222">{{ av.word }}<button onClick="{{ av.rm }}" style="border:none;background:none;color:#5B6472;cursor:pointer;font-size:11px;padding:0">✕</button></span>
+              </sc-for>
+              <input onKeyDown="{{ setAvoidAdd }}" placeholder="add a word + Enter" style="border:1px dashed #b9c8de;border-radius:14px;padding:4px 10px;font-size:11.5px;outline:none;width:130px">
+            </div>
+            <div style="font-size:11px;color:#5B6472;font-style:italic">Preview: "{{ setPreview }}"</div>
+          </div>
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:16px 18px">
+            <div style="font-size:13px;font-weight:700;color:#12284B;margin-bottom:3px">Ambient agent autonomy</div>
+            <div style="font-size:11.5px;color:#5B6472;margin-bottom:13px">Above the threshold an agent may auto-post (always logged). Below it, a human decides.</div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+              <sc-for list="{{ setAgents }}" as="sa" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="flex:none;width:150px;font-size:12px;font-weight:600;color:#222">{{ sa.name }}</span>
+                  <input type="range" min="80" max="99" value="{{ sa.val }}" onChange="{{ sa.set }}" style="flex:1;accent-color:#2DD4BF">
+                  <span style="flex:none;width:74px;font-size:11.5px;font-weight:700;color:#0d7a6d;text-align:right">auto ≥ {{ sa.val }}%</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Always requires a human — no exceptions</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#222">
+              <span>✓ Payments above CAD 10,000</span><span>✓ New vendor bank details</span><span>✓ Manual journal entries</span><span>✓ Anything sent to a customer</span><span>✓ Period close &amp; lock</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <!-- ============ ENTITIES ============ -->
+      <sc-if value="{{ isEnt }}" hint-placeholder-val="{{ false }}">
+        <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:250px 1fr;gap:14px;align-items:start">
+          <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+            <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:10px">Entity tree</div>
+            <div style="font-size:12px;color:#222;line-height:1.5">
+              <div style="font-weight:700;color:#12284B">▾ Algo8 Group <span style="font-size:10px;color:#5B6472">· reports in CAD</span></div>
+              <sc-for list="{{ entTree }}" as="et" hint-placeholder-count="3">
+                <button onClick="{{ et.go }}" style="display:flex;width:100%;border:none;background:{{ et.bg }};border-radius:6px;text-align:left;padding:5px 8px;margin:2px 0 0 12px;cursor:pointer;font-size:12px;gap:6px;align-items:center"><span style="color:#5B6472">└</span><b style="color:#12284B">{{ et.name }}</b><span style="margin-left:auto;font-size:10px;color:#5B6472;background:#F4F7FC;border-radius:4px;padding:1px 6px">{{ et.cur }}</span></button>
+              </sc-for>
+            </div>
+            <button onClick="{{ entLead }}" style="width:100%;margin-top:14px;border:1px solid #1F4E79;background:#fff;color:#1F4E79;border-radius:8px;font-size:11.5px;font-weight:600;padding:7px;cursor:pointer">⇩ Export auditor leadsheets</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
+              <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2"><b style="font-size:13px;color:#12284B">Consolidation — July 2026</b><span style="font-size:11px;color:#5B6472"> · all figures CAD equivalent at closing rates</span></div>
+              <div style="display:grid;grid-template-columns:1fr 110px 110px 110px 120px;padding:8px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Line</span><span style="text-align:right">Canada</span><span style="text-align:right">India</span><span style="text-align:right">US</span><span style="text-align:right">Group</span></div>
+              <sc-for list="{{ entRows }}" as="er" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:1fr 110px 110px 110px 120px;padding:7px 16px;font-size:12px;border-bottom:1px solid #f2f5fa;font-weight:{{ er.fw }};background:{{ er.bg }}">
+                  <span>{{ er.name }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ er.ca }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ er.in }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ er.us }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#12284B">{{ er.grp }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;padding:14px 16px">
+                <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:8px">Intercompany matching</div>
+                <sc-for list="{{ entIC }}" as="ic" hint-placeholder-count="2">
+                  <div style="display:flex;gap:8px;font-size:11.5px;padding:6px 0;border-bottom:1px dashed #eef2f8;align-items:center"><span style="flex:1;color:#222">{{ ic.pair }}</span><span style="font-variant-numeric:tabular-nums;color:#5B6472">{{ ic.amt }}</span><span style="font-weight:700;color:#1E7A46">{{ ic.status }}</span></div>
+                </sc-for>
+                <div style="font-size:11px;color:#5B6472;margin-top:8px">Eliminations posted automatically at consolidation — never in entity ledgers.</div>
+              </div>
+              <div style="background:rgba(45,212,191,.06);border:1px solid rgba(45,212,191,.3);border-radius:11px;padding:14px 16px">
+                <div style="font-size:12.5px;font-weight:700;color:#12284B;margin-bottom:6px">Reporting-only FX adjustments</div>
+                <div style="font-size:12px;color:#12284B;line-height:1.6">CTA of <b>CAD 2,140</b> from translating INR and USD balances at closing rates.<br><span style="font-size:11px;color:#0d7a6d;font-weight:700">✓ Does not touch any ledger — held in a reporting layer that is visible &amp; testable by the auditor.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <div id="screen-end" style="display:none"></div>
+    </main>
+  </div>
+  <!-- ============ ASK DOVETAIL PANEL ============ -->
+  <sc-if value="{{ askOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="width:440px;flex:none;background:#fff;border-left:1px solid #e3e9f2;display:flex;flex-direction:column;animation:dvslide .22s ease;box-shadow:-8px 0 24px rgba(18,40,75,.08)">
+      <div style="flex:none;padding:14px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:9px">
+        <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2DD4BF,#1F4E79);display:grid;place-items:center;font-size:12px;color:#0c2d29;font-weight:700">✦</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:13.5px;color:#12284B">Ask Dovetail</div><div style="font-size:10.5px;color:#5B6472">Conversational agent · efficient &amp; cheerful</div></div>
+        <button onClick="{{ toggleAsk }}" style="border:none;background:#F4F7FC;border-radius:7px;width:26px;height:26px;cursor:pointer;color:#5B6472;font-size:13px">✕</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+        <sc-if value="{{ askEmpty }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:12.5px;color:#5B6472;line-height:1.5">Hi! Ask me anything about your numbers — I'll always show you where the answer came from. Try one of these:</div>
+        </sc-if>
+        <sc-for list="{{ askMsgs }}" as="m" hint-placeholder-count="0">
+          <div style="animation:dvfade .25s ease">
+            <sc-if value="{{ m.user }}" hint-placeholder-val="{{ false }}">
+              <div style="margin-left:40px;background:#1F4E79;color:#fff;border-radius:12px 12px 3px 12px;padding:9px 12px;font-size:12.5px;line-height:1.45">{{ m.text }}</div>
+            </sc-if>
+            <sc-if value="{{ m.ai }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#F4F7FC;border:1px solid #e3e9f2;border-radius:12px 12px 12px 3px;padding:11px 13px">
+                <div style="font-size:12.5px;color:#222;line-height:1.55;white-space:pre-line">{{ m.text }}</div>
+                <sc-if value="{{ m.chart }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:10px;background:#fff;border:1px solid #e3e9f2;border-radius:8px;padding:10px 12px">
+                    <div style="font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">{{ m.chartTitle }}</div>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                      <sc-for list="{{ m.chart }}" as="b" hint-placeholder-count="2">
+                        <div style="display:flex;align-items:center;gap:8px">
+                          <span style="flex:none;width:64px;font-size:11px;color:#5B6472">{{ b.label }}</span>
+                          <span style="flex:1;height:14px;background:#eef2f8;border-radius:4px;overflow:hidden"><span style="display:block;height:100%;border-radius:4px;background:{{ b.color }};width:{{ b.pct }}"></span></span>
+                          <span style="flex:none;width:78px;text-align:right;font-size:11px;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ b.val }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.table }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:10px;background:#fff;border:1px solid #e3e9f2;border-radius:8px;overflow:hidden">
+                    <div style="display:grid;grid-template-columns:{{ m.tableCols }};gap:0;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px;padding:7px 10px;background:#F4F7FC;border-bottom:1px solid #e3e9f2">
+                      <sc-for list="{{ m.tableHead }}" as="h" hint-placeholder-count="3"><span style="text-align:{{ h.align }}">{{ h.t }}</span></sc-for>
+                    </div>
+                    <sc-for list="{{ m.table }}" as="row" hint-placeholder-count="3">
+                      <div style="display:grid;grid-template-columns:{{ m.tableCols }};padding:6px 10px;font-size:11.5px;border-bottom:1px solid #f2f5fa">
+                        <sc-for list="{{ row.cells }}" as="c" hint-placeholder-count="3"><span style="text-align:{{ c.align }};font-variant-numeric:tabular-nums;font-weight:{{ c.fw }};color:{{ c.color }}">{{ c.t }}</span></sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.actions }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:7px;margin-top:10px;flex-wrap:wrap">
+                    <sc-for list="{{ m.actions }}" as="a" hint-placeholder-count="2">
+                      <button onClick="{{ a.go }}" style="border:1px solid #1F4E79;background:{{ a.bg }};color:{{ a.fg }};border-radius:7px;font-size:11.5px;font-weight:600;padding:5px 11px;cursor:pointer">{{ a.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.sources }}" hint-placeholder-val="{{ false }}">
+                  <div style="margin-top:9px;font-size:10.5px;color:#5B6472;border-top:1px dashed #e3e9f2;padding-top:7px">Sources: {{ m.sources }} · <a href="#" onClick="{{ m.toggleHow }}" style="color:#0d7a6d;font-weight:600">How did you get this?</a></div>
+                  <sc-if value="{{ m.howOpen }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:7px;background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.3);border-radius:8px;padding:9px 11px;font-size:11px;color:#12284B;line-height:1.55;white-space:pre-line">{{ m.how }}</div>
+                  </sc-if>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ askThinking }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12px;color:#0d7a6d;display:flex;gap:7px;align-items:center"><span style="animation:dvpulse 1s infinite">✦</span> Looking at the ledger…</div>
+        </sc-if>
+      </div>
+      <div style="flex:none;border-top:1px solid #e3e9f2;padding:10px 14px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px">
+          <sc-for list="{{ askChips }}" as="q" hint-placeholder-count="5">
+            <button onClick="{{ q.go }}" style="border:1px solid rgba(45,212,191,.5);background:rgba(45,212,191,.08);color:#0d7a6d;border-radius:20px;font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;text-align:left">{{ q.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:7px">
+          <input value="{{ askInput }}" onChange="{{ askType }}" onKeyDown="{{ askKey }}" placeholder="Ask about any number…" style="flex:1;height:36px;border:1px solid #d7dfec;border-radius:9px;padding:0 12px;font-size:12.5px;outline:none">
+          <button onClick="{{ askSend }}" style="height:36px;border:none;border-radius:9px;background:#12284B;color:#fff;font-weight:700;font-size:12px;padding:0 14px;cursor:pointer">Ask</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <!-- ============ DRILL-DOWN OVERLAY ============ -->
+  <sc-if value="{{ drill }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeDrill }}" style="position:fixed;inset:0;background:rgba(18,40,75,.45);z-index:50;display:grid;place-items:center;padding:30px">
+      <div onClick="{{ stop }}" style="background:#fff;border-radius:14px;width:min(860px,94vw);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(18,40,75,.3);animation:dvfade .2s ease">
+        <div style="flex:none;padding:15px 20px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:10px">
+          <div style="flex:1"><div style="font-family:Fraunces,serif;font-size:16px;font-weight:600;color:#12284B">{{ drillTitle }}</div><div style="font-size:11.5px;color:#5B6472;margin-top:2px">{{ drillSub }}</div></div>
+          <button onClick="{{ closeDrill }}" style="border:none;background:#F4F7FC;border-radius:7px;width:28px;height:28px;cursor:pointer;color:#5B6472">✕</button>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:14px 20px">
+          <!-- list mode -->
+          <sc-if value="{{ drillList }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:86px 1fr 110px 120px;gap:0;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px;padding:6px 10px;border-bottom:1px solid #e3e9f2">
+              <span>Date</span><span>Description</span><span>Source</span><span style="text-align:right">Amount</span>
+            </div>
+            <sc-for list="{{ drillRows }}" as="r" hint-placeholder-count="6">
+              <button onClick="{{ r.open }}" style="display:grid;grid-template-columns:86px 1fr 110px 120px;width:100%;text-align:left;padding:8px 10px;border:none;border-bottom:1px solid #f2f5fa;background:#fff;cursor:pointer;font-size:12px;align-items:center" style-hover="background:#F4F7FC">
+                <span style="color:#5B6472">{{ r.date }}</span>
+                <span style="min-width:0"><span style="font-weight:600;color:#222">{{ r.desc }}</span>
+                  <sc-if value="{{ r.ai }}" hint-placeholder-val="{{ false }}"><span style="margin-left:7px;background:rgba(45,212,191,.16);color:#0d7a6d;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px">AI {{ r.conf }}%</span></sc-if>
+                </span>
+                <span style="color:#5B6472;font-size:11.5px">{{ r.src }}</span>
+                <span style="text-align:right;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ r.amt }}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ drillFoot }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;justify-content:space-between;padding:9px 10px;font-size:12.5px;font-weight:700;color:#12284B;border-top:2px solid #12284B;margin-top:2px"><span>{{ drillFootLabel }}</span><span style="font-variant-numeric:tabular-nums">{{ drillFoot }}</span></div>
+            </sc-if>
+          </sc-if>
+          <!-- transaction detail mode -->
+          <sc-if value="{{ txnOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+              <sc-for list="{{ bookTabs }}" as="bk" hint-placeholder-count="4">
+                <button onClick="{{ bk.go }}" style="border:1px solid {{ bk.bd }};background:{{ bk.bg }};color:{{ bk.fg }};border-radius:7px;font-size:11.5px;font-weight:600;padding:5px 11px;cursor:pointer">{{ bk.label }}</button>
+              </sc-for>
+              <span style="font-size:10.5px;color:#5B6472;margin-left:4px">Same transaction · four auditable sets of books</span>
+            </div>
+            <div style="background:#F4F7FC;border:1px solid #e3e9f2;border-radius:10px;padding:13px 15px;margin-bottom:12px">
+              <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#5B6472">
+                <span><b style="color:#222">Date:</b> {{ txnDate }}</span><span><b style="color:#222">Source:</b> {{ txnSrc }}</span>
+                <sc-if value="{{ txnVendor }}" hint-placeholder-val="{{ false }}"><span><b style="color:#222">Vendor:</b> {{ txnVendor }}</span></sc-if>
+                <sc-if value="{{ txnInv }}" hint-placeholder-val="{{ false }}"><span><b style="color:#222">Invoice #:</b> {{ txnInv }}</span></sc-if>
+                <sc-if value="{{ txnTax }}" hint-placeholder-val="{{ false }}"><span><b style="color:#222">Tax:</b> {{ txnTax }}</span></sc-if>
+                <span><b style="color:#222">Book:</b> {{ bookNote }}</span>
+              </div>
+            </div>
+            <div style="border:1px solid #e3e9f2;border-radius:10px;overflow:hidden;margin-bottom:12px">
+              <div style="display:grid;grid-template-columns:70px 1fr 110px 110px;padding:7px 12px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px"><span>Account</span><span></span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span></div>
+              <sc-for list="{{ txnLines }}" as="l" hint-placeholder-count="3">
+                <div style="display:grid;grid-template-columns:70px 1fr 110px 110px;padding:7px 12px;font-size:12px;border-bottom:1px solid #f2f5fa;align-items:center">
+                  <span style="font-weight:700;color:#1F4E79">{{ l.acct }}</span><span style="color:#222">{{ l.name }}</span>
+                  <span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ l.dr }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ l.cr }}</span>
+                </div>
+              </sc-for>
+              <div style="display:grid;grid-template-columns:70px 1fr 110px 110px;padding:7px 12px;font-size:12px;font-weight:700;color:#12284B;background:#F4F7FC"><span></span><span>Debits = Credits ✓</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ txnDrTot }}</span><span style="text-align:right;font-variant-numeric:tabular-nums">{{ txnCrTot }}</span></div>
+            </div>
+            <sc-if value="{{ txnAI }}" hint-placeholder-val="{{ false }}">
+              <div style="background:rgba(45,212,191,.08);border:1px solid rgba(45,212,191,.35);border-radius:10px;padding:12px 14px;margin-bottom:12px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                  <span style="background:#2DD4BF;color:#0c2d29;font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px">AI · {{ txnAgent }}</span>
+                  <span style="font-size:11px;font-weight:700;color:#0d7a6d">{{ txnConf }}% confident</span>
+                </div>
+                <div style="font-size:12px;color:#12284B;line-height:1.55"><b>Why:</b> {{ txnRationale }}</div>
+                <div style="display:flex;gap:7px;margin-top:10px">
+                  <button onClick="{{ txnApprove }}" style="border:none;background:#1E7A46;color:#fff;border-radius:7px;font-size:11.5px;font-weight:700;padding:6px 13px;cursor:pointer">✓ Approve</button>
+                  <button style="border:1px solid #d7dfec;background:#fff;color:#222;border-radius:7px;font-size:11.5px;font-weight:600;padding:6px 13px;cursor:pointer">Edit</button>
+                  <button style="border:1px solid #C0392B;background:#fff;color:#C0392B;border-radius:7px;font-size:11.5px;font-weight:600;padding:6px 13px;cursor:pointer">Reject</button>
+                  <span style="font-size:10.5px;color:#5B6472;align-self:center;margin-left:4px">Source: {{ txnDoc }}</span>
+                </div>
+              </div>
+            </sc-if>
+            <div style="border:1px solid #e3e9f2;border-radius:10px;padding:12px 14px">
+              <div style="font-size:11px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Immutable audit trail</div>
+              <sc-for list="{{ txnAudit }}" as="au" hint-placeholder-count="2">
+                <div style="display:flex;gap:9px;font-size:11.5px;padding:5px 0;border-bottom:1px dashed #eef2f8;align-items:baseline">
+                  <span style="flex:none;color:#5B6472;width:118px">{{ au.when }}</span>
+                  <span style="flex:1;color:#222">{{ au.what }}</span>
+                  <span style="flex:none;font-family:ui-monospace,monospace;font-size:10px;color:#8fa3c0">{{ au.hash }}</span>
+                </div>
+              </sc-for>
+              <div style="display:flex;align-items:center;gap:9px;margin-top:10px">
+                <button onClick="{{ verifyTxn }}" style="border:1px solid #1F4E79;background:#fff;color:#1F4E79;border-radius:7px;font-size:11.5px;font-weight:600;padding:6px 13px;cursor:pointer">🛡 Independently verify</button>
+                <sc-if value="{{ verified }}" hint-placeholder-val="{{ false }}"><span style="color:#1E7A46;font-size:12px;font-weight:700;animation:dvfade .3s ease">✓ Hash chain intact — entry has not been altered</span></sc-if>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <!-- toast -->
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#12284B;color:#fff;border-radius:10px;padding:10px 18px;font-size:12.5px;font-weight:600;z-index:99;box-shadow:0 8px 24px rgba(18,40,75,.35);animation:dvfade .25s ease">{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = {screen:'dashboard',persona:'Controller',entity:'CA',period:'2026-07',book:'functional',
+    askOpen:false,askMsgs:[],askInput:'',askThinking:false,
+    drill:null,txn:null,verified:false,toast:null,ready:false};
+  componentDidMount(){
+    import('./data.js').then(D=>{this.D=D;this.ledger=D.buildLedger();this.setState({ready:true})});
+    this._kd=(e)=>{if(e.key==='Escape')this.setState({drill:null,txn:null})};
+    window.addEventListener('keydown',this._kd);
+  }
+  componentWillUnmount(){window.removeEventListener('keydown',this._kd)}
+  // ---- helpers ----
+  cur(){return this.state.entity==='GROUP'?'CAD':this.D.ENTITIES.find(e=>e.id===this.state.entity).cur}
+  fm(n){return this.D.fmt(n,this.cur())}
+  go(screen){return()=>this.setState({screen})}
+  say(msg){this.setState({toast:msg});clearTimeout(this._tt);this._tt=setTimeout(()=>this.setState({toast:null}),2600)}
+  openDrill(title,sub,txns,opts={}){
+    const D=this.D,ent=this.state.entity;
+    const rows=txns.map(t=>{
+      const amt=opts.acct?t.lines.filter(l=>l.acct===opts.acct).reduce((s,l)=>s+(l.dr||0)-(l.cr||0),0):Math.max(t.lines.reduce((s,l)=>s+(l.dr||0),0),0);
+      const fx=ent==='GROUP'?D.FX[D.ENTITIES.find(e=>e.id===t.entity).cur]:1;
+      return {date:t.date,desc:t.desc,src:t.src+(t.agent?' · '+t.agent:''),ai:t.ai,conf:t.conf,amt:this.fm(Math.round(amt*fx*100)/100),raw:amt*fx,open:()=>this.openTxn(t)}});
+    const foot=rows.reduce((s,r)=>s+r.raw,0);
+    this.setState({drill:{title,sub,rows,foot:opts.foot!==false?this.fm(Math.round(foot*100)/100):null,footLabel:opts.footLabel||'Total'},txn:null,verified:false});
+  }
+  openTxn(t){this.setState({drill:this.state.drill||{title:'Transaction',sub:'',rows:null},txn:t,verified:false})}
+  // ---- Ask Dovetail ----
+  ask(q){
+    const msgs=[...this.state.askMsgs,{user:true,text:q}];
+    this.setState({askMsgs:msgs,askInput:'',askThinking:true,askOpen:true});
+    setTimeout(()=>{this.setState({askMsgs:[...this.state.askMsgs,this.answer(q)],askThinking:false})},700);
+  }
+  answer(q){
+    const D=this.D,L=this.ledger,s=q.toLowerCase(),ent=this.state.entity;
+    const mk=(o)=>({ai:true,howOpen:false,toggleHow:(e)=>{e&&e.preventDefault();o._i=this.state.askMsgs.indexOf(o);const m=[...this.state.askMsgs];const me=m.find(x=>x===o)||o;me.howOpen=!me.howOpen;this.setState({askMsgs:m})},...o});
+    if(s.includes('telephone')||s.includes('phone')){
+      const t26=D.glTotal(L,'6400','CA','2026-07'),t25=D.glTotal(L,'6400','CA','2025-07');
+      const txns=D.glTxns(L,'6400','CA','2026-07');
+      return mk({text:`Telephone (GL 6400, Algo8 Canada) is CAD ${D.fmt(t26)} in July 2026 vs ${D.fmt(t25)} in July 2025 — up ${Math.round((t26/t25-1)*100)}%.\n\nThe driver is a one-time CAD 620 charge from Bell Canada for a new phone system (invoice #1245, dated 12 Jun 2026, received and posted 3 Jul). The rest is a small rate increase (+CAD 37/mo effective April).\n\nWithout the one-time charge, July would be CAD ${D.fmt(t26-620)} — a ${Math.round(((t26-620)/t25-1)*100)}% increase.`,
+        chartTitle:'Telephone — GL 6400 · year over year (CAD)',
+        chart:[{label:'Jul 2025',pct:Math.round(t25/t26*100)+'%',val:D.fmt(t25)+' CAD',color:'#8fa3c0'},{label:'Jul 2026',pct:'100%',val:D.fmt(t26)+' CAD',color:'#1F4E79'},{label:'One-time',pct:Math.round(620/t26*100)+'%',val:'620 CAD',color:'#2DD4BF'}],
+        tableCols:'80px 1fr 90px',tableHead:[{t:'Date',align:'left'},{t:'Transaction',align:'left'},{t:'CAD',align:'right'}],
+        table:txns.map(t=>({cells:[{t:t.date.slice(5),align:'left',color:'#5B6472'},{t:t.desc.replace(' — Bell Canada',''),align:'left',fw:'600',color:'#222'},{t:D.fmt(t.lines[0].dr),align:'right',fw:'700',color:'#12284B'}]})),
+        actions:[{label:'Show me the entries',bg:'#1F4E79',fg:'#fff',go:()=>this.openDrill('Telephone — GL 6400','Algo8 Canada · July 2026',txns,{acct:'6400'})},{label:'Export to Excel',bg:'#fff',fg:'#1F4E79',go:()=>this.say('telephone-6400-jul2026.xlsx exported (demo)')}],
+        sources:`${txns.length} transactions · GL 6400 · Jul 2026 &amp; Jul 2025 · Algo8 Canada`,
+        how:'1. Pulled GL 6400 balances for Jul 2026 and Jul 2025 (Algo8 Canada, functional currency).\n2. Ranked the period\u2019s transactions by contribution to the change.\n3. Invoice #1245 explains 94% of the increase; classed as one-time (no matching bill in any prior month).\n4. Compared remaining monthly bill to prior-year: +3.1% rate change, consistent with the April rate letter.'});
+    }
+    if(s.includes('cash')){
+      const rows=D.cashByEntity(L,'2026-07'),tot=rows.reduce((s,r)=>s+r.cad,0);
+      return mk({text:`Here\u2019s cash across all entities as of 28 Jul 2026. Group total: CAD ${D.fmt(tot)}. All three entities\u2019 bank accounts are reconciled (93% auto-matched, 4 items open).`,
+        chartTitle:'Cash by entity (CAD equivalent)',
+        chart:rows.map((r,i)=>({label:r.name.replace('Algo8 ',''),pct:Math.round(r.cad/Math.max(...rows.map(x=>x.cad))*100)+'%',val:D.fmt(r.cad)+' CAD',color:['#1F4E79','#2DD4BF','#8fa3c0'][i]})),
+        tableCols:'1fr 110px 110px',tableHead:[{t:'Entity',align:'left'},{t:'Local',align:'right'},{t:'CAD equiv.',align:'right'}],
+        table:rows.map(r=>({cells:[{t:r.name,align:'left',fw:'600',color:'#222'},{t:D.fmt(r.amt,r.cur),align:'right',color:'#5B6472'},{t:D.fmt(r.cad),align:'right',fw:'700',color:'#12284B'}]})),
+        actions:[{label:'Open Banking',bg:'#1F4E79',fg:'#fff',go:()=>{this.setState({screen:'banking'})}},{label:'Export to Excel',bg:'#fff',fg:'#1F4E79',go:()=>this.say('cash-position.xlsx exported (demo)')}],
+        sources:'9 bank accounts · 3 entities · closing FX: USD 1.36, INR 0.0165',
+        how:'1. Summed GL 1000/1010/1020 per entity in functional currency.\n2. Converted at 28 Jul 2026 closing rates (reporting-only — the ledger is untouched).\n3. Cross-checked each account\u2019s balance to its last reconciled bank feed line.'});
+    }
+    if(s.includes('vendor a')||s.includes('approved by')||(s.includes('invoices')&&s.includes('q2'))){
+      const rows=[{d:'2026-04-05',i:'AWS-86112',a:6244.19},{d:'2026-05-04',i:'AWS-87001',a:6402.77},{d:'2026-06-03',i:'AWS-87668',a:6188.03}];
+      return mk({text:'Found 3 invoices from AWS (Amazon Web Services) approved by J. Moreau (Finance Manager) in Q2 2026. No SQL needed — I traversed the approval graph: vendor → bills → approval records.',
+        tableCols:'80px 1fr 100px 90px',tableHead:[{t:'Date',align:'left'},{t:'Invoice',align:'left'},{t:'Approved',align:'left'},{t:'CAD',align:'right'}],
+        table:rows.map(r=>({cells:[{t:r.d.slice(5),align:'left',color:'#5B6472'},{t:r.i,align:'left',fw:'600',color:'#222'},{t:'J. Moreau ✓',align:'left',color:'#1E7A46'},{t:D.fmt(r.a),align:'right',fw:'700',color:'#12284B'}]})),
+        actions:[{label:'Open Bills (AP)',bg:'#1F4E79',fg:'#fff',go:()=>this.setState({screen:'ap'})},{label:'Export to Excel',bg:'#fff',fg:'#1F4E79',go:()=>this.say('aws-q2-approvals.xlsx exported (demo)')}],
+        sources:'3 bills · approval log · Apr–Jun 2026 · Algo8 Canada',
+        how:'Query plan (knowledge graph, no SQL):\nvendor("AWS") → bill[] → approval(actor = role:Finance Manager) → filter(date ∈ Q2-2026).\nEach result links to its immutable approval record.'});
+    }
+    if(s.includes('control')){
+      const ex=D.CONTROLS.filter(c=>c.status!=='pass');
+      return mk({text:`Two items need attention this month: 1 control exception and 1 pending attestation. The other 13 controls are passing with evidence auto-collected.`,
+        tableCols:'54px 1fr 90px',tableHead:[{t:'ID',align:'left'},{t:'Control',align:'left'},{t:'Status',align:'left'}],
+        table:ex.map(c=>({cells:[{t:c.id,align:'left',fw:'700',color:'#1F4E79'},{t:c.objective,align:'left',color:'#222'},{t:c.status==='exception'?'Exception':'Pending',align:'left',fw:'700',color:c.status==='exception'?'#C0392B':'#C77F0A'}]})),
+        actions:[{label:'Open Controls &amp; Audit',bg:'#1F4E79',fg:'#fff',go:()=>this.setState({screen:'controls'})}],
+        sources:'15 controls · continuous monitoring · Jul 2026',
+        how:'Each control is tested continuously against live transactions. C-03 flagged bill MS-1188 (price 22% above PO). C-12 is a manual control awaiting the CFO\u2019s monthly attestation.'});
+    }
+    if(s.includes('flux')||s.includes('commentary')||s.includes('month-end')){
+      return mk({text:'Here\u2019s a draft — edit anything before it goes in the report:\n\n• Revenue of CAD 168.4k, up 1.5% vs June, driven by the Meridian Foods subscription uplift.\n• Telephone expense up 54% YoY on a one-time CAD 620 phone-system installation (Bell #1245); underlying run-rate up 3%.\n• Implementation labour 22% over plan on the Meridian Deploy project — timing, expected to reverse in August.\n• Cash of CAD 512k across entities; no covenant concerns (current ratio 2.4× vs 1.25× required).',
+        actions:[{label:'Insert into report',bg:'#1F4E79',fg:'#fff',go:()=>this.say('Commentary inserted into the July board pack draft')},{label:'Make it shorter',bg:'#fff',fg:'#1F4E79',go:()=>this.say('Draft shortened (demo)')}],
+        sources:'July 2026 P&amp;L · variance engine · 4 material movements',
+        how:'Drafted from the change-analysis module\u2019s ranked movements (materiality > CAD 500 or > 10%). Every bullet links to its driving transactions — nothing here is unsupported.'});
+    }
+    return mk({text:'I\u2019m a demo, so my repertoire is scripted — but try one of the suggested questions below and I\u2019ll show you real drill-downs, charts and sources.',sources:null});
+  }
+  vals_core(){
+    const s=this.state,D=this.D;
+    const nav=[['dashboard','⌂','Home'],['gl','☰','Transactions / GL'],['tb','⚖','Trial Balance'],['fin','▤','Financial Statements'],['ap','�th','Bills (AP)'],['ar','⇦','Invoices (AR)'],['banking','⛁','Banking & Rec'],['reports','▦','Reports & Excel'],['controls','🛡','Controls & Audit'],['agents','✦','Agents'],['entities','⌗','Entities'],['settings','⚙','Agent Persona']];
+    const icons={ap:'▥',ar:'▤'};
+    const titles={dashboard:'Home',gl:'Transactions / General Ledger',tb:'Trial Balance',fin:'Financial Statements',ap:'Bills — Accounts Payable',ar:'Invoices — Accounts Receivable',banking:'Banking & Reconciliation',reports:'Reports & Excel Bridge',controls:'Controls & Audit',agents:'Agent Activity',entities:'Entities & Consolidation',settings:'Agent Persona Settings'};
+    return {
+      navItems:nav.map(n=>({label:n[2],icon:icons[n[0]]||n[1],go:this.go(n[0]),bg:s.screen===n[0]?'rgba(45,212,191,.16)':'transparent',fg:s.screen===n[0]?'#2DD4BF':'#c6d2e4',fw:s.screen===n[0]?'700':'500',badge:n[0]==='agents'?'8':null})),
+      screenTitle:titles[s.screen]||'Dovetail AI',
+      entity:s.entity,setEntity:e=>this.setState({entity:e.target.value}),
+      entityOpts:D?D.ENTITIES.map(e=>({id:e.id,label:e.name+' · '+e.cur})):[{id:'CA',label:'Algo8 Canada · CAD'}],
+      curLabel:s.entity==='GROUP'?'Group reporting: CAD':(this.D?this.cur():'CAD')+' · functional',
+      persona:s.persona,setPersona:e=>this.setState({persona:e.target.value}),personaOpts:D?D.PERSONAS:['Controller'],
+      toggleAsk:()=>this.setState({askOpen:!s.askOpen}),
+      askOpen:s.askOpen,askMsgs:s.askMsgs,askEmpty:s.askMsgs.length===0,askThinking:s.askThinking,
+      askChips:[['Why is telephone expense 50% higher than last year?'],['What\u2019s our cash position across all entities?'],['Show all invoices for Vendor A approved by the Finance Manager in Q2.'],['Which controls failed this month?'],['Draft the month-end flux commentary.']].map(q=>({label:q[0],go:()=>this.ask(q[0])})),
+      askInput:s.askInput,askType:e=>this.setState({askInput:e.target.value}),
+      askKey:e=>{if(e.key==='Enter'&&s.askInput.trim())this.ask(s.askInput.trim())},
+      askSend:()=>{if(s.askInput.trim())this.ask(s.askInput.trim())},
+      toast:s.toast,stop:e=>e.stopPropagation(),
+      drill:!!(s.drill||s.txn),closeDrill:()=>this.setState({drill:null,txn:null}),
+      drillTitle:s.txn?s.txn.desc:(s.drill?s.drill.title:''),
+      drillSub:s.txn?('Transaction '+s.txn.id+' · '+(s.txn.entity?D.ENTITIES.find(e=>e.id===s.txn.entity).name:'')):(s.drill?s.drill.sub:''),
+      drillList:!s.txn&&!!(s.drill&&s.drill.rows),drillRows:s.drill&&s.drill.rows?s.drill.rows:[],
+      drillFoot:s.txn?null:(s.drill?s.drill.foot:null),drillFootLabel:s.drill?s.drill.footLabel:'Total',
+      ...this.txnVals()
+    };
+  }
+  txnVals(){
+    const s=this.state,D=this.D,t=s.txn;
+    if(!t)return {txnOpen:false};
+    const fx=s.book==='reporting'?D.FX[D.ENTITIES.find(e=>e.id===t.entity).cur]:1;
+    const cur=s.book==='reporting'?'CAD':D.ENTITIES.find(e=>e.id===t.entity).cur;
+    const lines=(s.book==='cash'?t.lines.filter(l=>['1000','1010','1020'].includes(l.acct)||t.src==='Bank'):t.lines);
+    const useLines=lines.length?lines:t.lines;
+    const dr=useLines.reduce((a,l)=>a+(l.dr||0),0),cr=useLines.reduce((a,l)=>a+(l.cr||0),0);
+    const notes={functional:'Functional ('+D.ENTITIES.find(e=>e.id===t.entity).cur+')',tax:'Tax / home — '+(t.tax||'no tax applied'),reporting:'Reporting (CAD @ closing rate)',cash:'Cash basis view'};
+    return {txnOpen:true,
+      txnDate:t.date+(t.docdate?' (doc date '+t.docdate+')':''),txnSrc:t.src,txnVendor:t.vendor||null,txnInv:t.invno||null,txnTax:s.book==='tax'?(t.tax||'None'):null,
+      bookNote:notes[s.book],
+      bookTabs:[['functional','Functional'],['tax','Tax (home)'],['reporting','Reporting'],['cash','Cash']].map(b=>({label:b[1],go:()=>this.setState({book:b[0]}),bg:s.book===b[0]?'#12284B':'#fff',fg:s.book===b[0]?'#fff':'#1F4E79',bd:s.book===b[0]?'#12284B':'#d7dfec'})),
+      txnLines:useLines.map(l=>({acct:l.acct,name:D.acctName(l.acct),dr:l.dr?D.fmt2(l.dr*fx,cur):'',cr:l.cr?D.fmt2(l.cr*fx,cur):''})),
+      txnDrTot:D.fmt2(dr*fx,cur),txnCrTot:D.fmt2(cr*fx,cur),
+      txnAI:!!t.ai,txnAgent:t.agent||'Agent',txnConf:t.conf,txnRationale:t.rationale||'',txnDoc:t.invno?('Invoice #'+t.invno+' (PDF attached)'):'Source document attached',
+      txnApprove:()=>{this.say('Approved — logged to the immutable audit trail');this.setState({txn:null,drill:s.drill&&s.drill.rows?s.drill:null})},
+      txnAudit:[
+        {when:t.date+' 06:12',what:(t.agent||'Agent')+' created this entry from '+(t.invno?'invoice #'+t.invno:'source document')+' · confidence '+(t.conf||99)+'%',hash:D.fakeHash(t.id+'a').slice(0,12)},
+        {when:t.date+' 06:12',what:'Coding proposed: '+t.lines.map(l=>l.acct).join(', ')+' · rules & precedent cited',hash:D.fakeHash(t.id+'b').slice(0,12)},
+        {when:t.date+' 09:41',what:(t.conf>=95?'Auto-posted (above 95% threshold) · S. Patel notified':'Approved by S. Patel (Controller)'),hash:D.fakeHash(t.id+'c').slice(0,12)}],
+      verifyTxn:()=>this.setState({verified:true}),verified:s.verified};
+  }
+  vals_dash(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='dashboard')return {isDash:s.screen==='dashboard',dashTiles:[],dashLeft:[],dashRight:[]};
+    const L=this.ledger,ent=s.entity,p='2026-07',cur=this.cur();
+    const cash=D.cashByEntity(L,p),cashTot=ent==='GROUP'?cash.reduce((a,r)=>a+r.cad,0):(cash.find(r=>r.entity===ent)||{amt:0}).amt;
+    const rev=-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,ent,p),0);
+    const exp=D.COA.filter(a=>'XC'.includes(a.t)).reduce((a,c)=>a+D.glTotal(L,c.n,ent,p),0);
+    const ni=rev-exp;
+    const tel26=D.glTotal(L,'6400','CA','2026-07'),tel25=D.glTotal(L,'6400','CA','2025-07');
+    const drillGL=(acct,label)=>()=>this.openDrill(label,D.ENTITIES.find(e=>e.id===(ent==='GROUP'?'GROUP':ent)).name+' · July 2026',D.glTxns(L,acct,ent,p),{acct});
+    const drillRev=()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===p&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100'].includes(l.acct))));
+    const agents=D.AGENTS.slice(0,4).map(a=>({icon:a.icon,name:a.name,sub:a.today}));
+    const P=s.persona,V={};
+    if(P==='Controller'){V.greet='Good morning, Sam — close is on track.';V.sub='Day 2 of 4 · July 2026 close · Algo8 '+(ent==='GROUP'?'Group':D.ENTITIES.find(e=>e.id===ent).name.replace('Algo8 ',''));
+      V.tiles=[{label:'Close status',value:'Day 2 of 4',sub:'On track · 62% of checklist done',accent:'#2DD4BF',go:this.go('agents')},
+        {label:'Reconciliations automated',value:'93%',sub:'89 of 96 bank lines matched',accent:'#1F4E79',go:this.go('banking')},
+        {label:'Awaiting my review',value:'8',sub:'4 bills · 2 reminders · 2 matches',accent:'#C77F0A',go:this.go('agents')},
+        {label:'Open exceptions',value:'3',sub:'1 control · 2 reconciliation',accent:'#C0392B',go:this.go('controls')}];
+      V.leftTitle='Needs your decision';V.left=[
+        {title:'Bill MS-1188 — Maple Systems',sub:'Hours 22% above June. 3-way match: price variance.',val:this.fm(7770),valColor:'#C77F0A',ai:true,conf:'88%',bg:'#fff',go:this.go('ap')},
+        {title:'Bill DF-0042 — Delta Freight',sub:'No PO, unclear coding. The AP Agent has a question for you.',val:this.fm(3980),valColor:'#C0392B',ai:true,conf:'64%',bg:'#fff',go:this.go('ap')},
+        {title:'2 collection reminders drafted',sub:'Lakeside (16 days) and Prairie AgCo (39 days) — review the wording.',val:this.fm(28870),valColor:'#12284B',ai:true,conf:'',bg:'#fff',go:this.go('ar')},
+        {title:'Unidentified deposit',sub:'3,980 received 22 Jul, no matching invoice. Escalated by Treasury Agent.',val:this.fm(3980),valColor:'#C77F0A',ai:true,conf:'41%',bg:'#fff',go:this.go('banking')}];
+    } else if(P==='CFO'){V.greet='Morning, Alex. Cash is healthy; one variance worth a look.';V.sub='July 2026 · consolidated view';
+      V.tiles=[{label:'Cash (all entities)',value:'CAD '+D.fmt(cash.reduce((a,r)=>a+r.cad,0)),sub:'Runway 14+ months at current burn',accent:'#2DD4BF',go:this.go('banking')},
+        {label:'Revenue (Jul)',value:this.fm(rev),sub:'+1.5% vs June',accent:'#1F4E79',go:drillRev},
+        {label:'Net income (Jul)',value:this.fm(ni),sub:ni>=0?'Profitable this month':'Investing ahead of revenue',accent:ni>=0?'#1E7A46':'#C77F0A',go:this.go('fin')},
+        {label:'Covenant — current ratio',value:'2.4×',sub:'Requirement 1.25× · comfortable',accent:'#1E7A46',go:this.go('fin')}];
+      V.leftTitle='Top variances — explained';V.left=[
+        {title:'Telephone +54% YoY',sub:'One-time 620 phone-system install (Bell #1245) + 3% rate. Underlying is fine.',val:'+'+D.fmt(tel26-tel25),valColor:'#C0392B',ai:true,conf:'',bg:'#fff',go:()=>this.ask('Why is telephone expense 50% higher than last year?')},
+        {title:'Implementation labour +22% vs plan',sub:'Meridian Deploy timing — expected to reverse in August.',val:'+'+this.fm(1400),valColor:'#C77F0A',ai:true,conf:'',bg:'#fff',go:drillGL('5100','Implementation Labour — GL 5100')},
+        {title:'Working capital',sub:'DSO 31 days (target 35) · DPO 24 days · in good shape.',val:'✓',valColor:'#1E7A46',ai:true,conf:'',bg:'#fff',go:this.go('reports')}];
+    } else if(P==='CEO'){V.greet='Hi Priya — here\u2019s what changed this month.';V.sub='Plain-English view · July 2026';
+      V.tiles=[{label:'Revenue',value:this.fm(rev),sub:'Growing steadily — up 16% vs last year',accent:'#1F4E79',go:drillRev},
+        {label:'Cash in the bank',value:'CAD '+D.fmt(cash.reduce((a,r)=>a+r.cad,0)),sub:'More than a year of runway',accent:'#2DD4BF',go:this.go('banking')},
+        {label:'Profit this month',value:this.fm(ni),sub:ni>=0?'In the black':'Investing in growth',accent:'#1E7A46',go:this.go('fin')}];
+      V.leftTitle='What changed, and 3 things to know';V.left=[
+        {title:'Customers paid on time',sub:'Collections are healthy — only two invoices are late, both being chased politely.',val:'✓',valColor:'#1E7A46',ai:false,bg:'#fff',go:this.go('ar')},
+        {title:'Risk: one supplier bill needs a decision',sub:'A 3,980 freight bill arrived without a purchase order — the team is on it.',val:'!',valColor:'#C77F0A',ai:false,bg:'#fff',go:this.go('ap')},
+        {title:'Opportunity: Meridian project is growing',sub:'Contractor hours are up because the Meridian rollout is ahead of schedule.',val:'↑',valColor:'#1F4E79',ai:false,bg:'#fff',go:this.go('reports')},
+        {title:'Phone costs jumped — but it\u2019s one-time',sub:'We bought a new phone system in June. Normal bills resume next month.',val:'+620',valColor:'#5B6472',ai:false,bg:'#fff',go:()=>this.ask('Why is telephone expense 50% higher than last year?')}];
+      V.hint='Tip: tap any card to see the story behind the number — no accounting jargon, promise.';
+    } else if(P==='Internal Auditor'){V.greet='Control environment — July 2026';V.sub='Continuous monitoring · all entities';
+      V.tiles=[{label:'Control coverage',value:'87%',sub:'13 of 15 controls automated',accent:'#2DD4BF',go:this.go('controls')},
+        {label:'Controls tested',value:'15 / 15',sub:'14 by continuous monitoring, 1 manual',accent:'#1F4E79',go:this.go('controls')},
+        {label:'Exceptions open',value:'1',sub:'C-03 · 3-way match price variance',accent:'#C0392B',go:this.go('controls')},
+        {label:'Evidence auto-collected',value:'96%',sub:'412 items linked this month',accent:'#1E7A46',go:this.go('controls')}];
+      V.leftTitle='Attention items';V.left=[
+        {title:'C-03 · 3-way match exception',sub:'Bill MS-1188 price 22% above PO-2214. Awaiting Controller decision.',val:'Open',valColor:'#C0392B',ai:true,conf:'',bg:'#fff',go:this.go('controls')},
+        {title:'C-12 · CFO monthly review',sub:'Manual attestation pending for July — reminder sent.',val:'Pending',valColor:'#C77F0A',ai:false,bg:'#fff',go:this.go('controls')},
+        {title:'Agent autonomy audit',sub:'0 agent actions above threshold without human approval this month.',val:'✓',valColor:'#1E7A46',ai:true,conf:'',bg:'#fff',go:this.go('agents')}];
+    } else if(P==='External Auditor'){V.greet='Welcome back. Your PBC list is 78% complete.';V.sub='Audit workspace · FY2026 interim · read-only access';
+      V.tiles=[{label:'PBC requests fulfilled',value:'18 / 23',sub:'5 in progress — evidence auto-attached',accent:'#2DD4BF',go:this.go('controls')},
+        {label:'Sampled transactions',value:'40',sub:'32 traced end-to-end · 8 queued',accent:'#1F4E79',go:this.go('controls')},
+        {label:'Verification status',value:'0 exceptions',sub:'All hash checks passed',accent:'#1E7A46',go:this.go('controls')}];
+      V.leftTitle='Your open requests';V.left=[
+        {title:'Revenue: end-to-end trace (sample of 25)',sub:'Contract → invoice → approval → entry → payment. 21 complete.',val:'21/25',valColor:'#1F4E79',ai:false,bg:'#fff',go:this.go('controls')},
+        {title:'AR confirmations',sub:'6 sent · 4 returned · 2 outstanding (Meridian, Harbourline).',val:'4/6',valColor:'#C77F0A',ai:false,bg:'#fff',go:this.go('controls')},
+        {title:'Auditor leadsheets — July',sub:'Generated and ready to export from Entities & Consolidation.',val:'Ready',valColor:'#1E7A46',ai:false,bg:'#fff',go:this.go('entities')}];
+    } else {V.greet='Hi Jordan! Nice and light today 🌤';V.sub='Your guided task list · nothing scary, promise';
+      V.tiles=[{label:'Bills to enter',value:'3',sub:'I\u2019ve pre-filled what I could',accent:'#2DD4BF',go:this.go('ap')},
+        {label:'Need your check',value:'2',sub:'Quick yes/no — I\u2019ll explain each one',accent:'#C77F0A',go:this.go('ap')},
+        {label:'Done this week',value:'27',sub:'Great pace — all clean on first entry',accent:'#1E7A46',go:this.go('agents')}];
+      V.leftTitle='Today\u2019s tasks — in order';V.left=[
+        {title:'1 · Enter the Staples bill',sub:'I\u2019ll suggest the account and tax — you just confirm. Takes ~30 seconds.',val:'Start',valColor:'#1F4E79',ai:true,conf:'96%',bg:'#fff',go:this.go('ap')},
+        {title:'2 · Check my coding on the Harbour Print bill',sub:'New vendor, so I\u2019m only 84% sure. Two clicks.',val:'Check',valColor:'#C77F0A',ai:true,conf:'84%',bg:'#fff',go:this.go('ap')},
+        {title:'3 · Scan the receipts from the team offsite',sub:'Drop the photos in and I\u2019ll code them for your review.',val:'Scan',valColor:'#1F4E79',ai:true,conf:'',bg:'#fff',go:this.go('ap')}];
+      V.hint='Remember: you can\u2019t break anything. Every change is reversible and I double-check the books continuously. If a duplicate or an odd number shows up, I\u2019ll flag it gently. 💚';
+    }
+    return {isDash:s.screen==='dashboard',dashGreeting:V.greet,dashSub:V.sub,dashTiles:V.tiles.map(t=>({subColor:'#5B6472',...t})),
+      dashLeftTitle:V.leftTitle,dashLeft:V.left,dashRightTitle:'Agent activity — live',dashRight:agents,dashHint:V.hint||null};
+  }
+  vals_gl(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='gl')return {isGL:s.screen==='gl',glRows:[],glFilters:[]};
+    const L=this.ledger,ent=s.entity,p='2026-07';
+    const F=s.glF||{acct:'all',proj:'all',dept:'all',src:'all',ent:'all'};
+    let rows=D.txnsFor(L,ent,p);
+    if(F.acct!=='all')rows=rows.filter(t=>t.lines.some(l=>l.acct===F.acct));
+    if(F.proj!=='all')rows=rows.filter(t=>t.proj===F.proj);
+    if(F.dept!=='all')rows=rows.filter(t=>t.dept===F.dept);
+    if(F.src!=='all')rows=rows.filter(t=>t.src===F.src);
+    const setF=k=>e=>this.setState({glF:{...F,[k]:e.target.value}});
+    const mkOpts=(label,arr)=>[{v:'all',t:label+': All'},...arr.map(a=>({v:a.v||a,t:a.t||a}))];
+    return {isGL:true,glCount:rows.length,
+      glFilters:[
+        {value:F.acct,set:setF('acct'),opts:mkOpts('Account',D.COA.map(a=>({v:a.n,t:a.n+' '+a.name})))},
+        {value:F.proj,set:setF('proj'),opts:mkOpts('Project',['Plant OS Rollout','Meridian Deploy','Core Platform'])},
+        {value:F.dept,set:setF('dept'),opts:mkOpts('Department',['Operations','Engineering','Sales','G&A'])},
+        {value:F.src,set:setF('src'),opts:mkOpts('Source',['AP','AR','Bank','Payroll','JE'])}],
+      glRows:rows.map(t=>{
+        const fx=ent==='GROUP'?D.FX[D.ENTITIES.find(e=>e.id===t.entity).cur]:1;
+        const amt=t.lines.reduce((a,l)=>a+(l.dr||0),0)*fx;
+        return {date:t.date,desc:t.desc,proj:t.proj||'—',dept:t.dept||'—',src:t.src,ai:t.ai,conf:t.conf,amt:this.fm(Math.round(amt*100)/100),open:()=>this.openTxn(t)}})};
+  }
+  vals_tb(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='tb')return {isTB:s.screen==='tb',tbRows:[]};
+    const L=this.ledger,ent=s.entity,p='2026-07';
+    const rows=D.trialBalance(L,ent,p);
+    const drT=rows.reduce((a,r)=>a+(r.bal>0?r.bal:0),0),crT=rows.reduce((a,r)=>a+(r.bal<0?-r.bal:0),0);
+    return {isTB:true,
+      tbRows:rows.map(r=>({n:r.n,name:r.name,dr:r.bal>0?this.fm(r.bal):'',cr:r.bal<0?this.fm(-r.bal):'',bg:'#fff',
+        note:r.n==='2000'?'This one AP figure is produced by the Vendors sub-ledger':(r.n==='1100'?'Tied to the Customers sub-ledger':null),
+        open:()=>this.openDrill(r.n+' — '+r.name,D.ENTITIES.find(e=>e.id===ent).name+' · July 2026 activity',D.glTxns(L,r.n,ent,p),{acct:r.n})})),
+      tbDrTot:this.fm(Math.round(drT*100)/100),tbCrTot:this.fm(Math.round(crT*100)/100)};
+  }
+  vals_fin(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='fin')return {isFin:s.screen==='fin',finRows:[],finTabs:[]};
+    const L=this.ledger,ent=s.entity,tab=s.finTab||'pl';
+    const tabs=[['pl','P&L'],['bs','Balance Sheet'],['cf','Cash Flow']].map(t=>({label:t[1],go:()=>this.setState({finTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'}));
+    const g=(a,p)=>D.glTotal(L,a,ent,p);
+    const rows=[];
+    const push=(name,cur,pr,o={})=>{const v=pr?Math.round((cur/pr-1)*1000)/10:null;rows.push({name,curV:cur,priorV:pr,
+      cur:this.fm(Math.round(cur)),prior:pr!=null?this.fm(Math.round(pr)):'',var:v!=null&&isFinite(v)?(v>0?'+':'')+v+'%':'',
+      varColor:v==null?'#5B6472':(Math.abs(v)>15?'#C0392B':(Math.abs(v)>5?'#C77F0A':'#5B6472')),
+      fw:o.total?'700':'400',bg:o.total?'#F4F7FC':'#fff',open:o.open||null,explain:o.explain||null,note:o.note||null})};
+    if(tab==='pl'){
+      const P='2026-07',Q='2026-06';
+      let revC=0,revP=0;['4000','4100'].forEach(a=>{revC-=g(a,P);revP-=g(a,Q)});
+      push('Revenue',revC,revP,{open:()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===P&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100'].includes(l.acct))))});
+      let cogsC=0,cogsP=0;['5000','5100'].forEach(a=>{cogsC+=g(a,P);cogsP+=g(a,Q)});
+      push('Cost of revenue',cogsC,cogsP,{note:ent!=='IN'&&cogsC/Math.max(cogsP,1)>1.08?'Implementation labour is 22% above June — extra Meridian Deploy contractor hours (bill MS-1188). Timing; expected to reverse in August.':null});
+      push('Gross profit',revC-cogsC,revP-cogsP,{total:true});
+      D.COA.filter(a=>a.t==='X').forEach(a=>{const c=g(a.n,P),q=g(a.n,Q);if(Math.abs(c)<.01&&Math.abs(q)<.01)return;
+        const isTel=a.n==='6400'&&(ent==='CA'||ent==='GROUP');
+        push(a.n+' · '+a.name,c,q,{open:()=>this.openDrill(a.n+' — '+a.name,'July 2026',D.glTxns(L,a.n,ent,P),{acct:a.n}),
+          explain:isTel?()=>this.ask('Why is telephone expense 50% higher than last year?'):null,
+          note:isTel?'Up 50% vs June and 54% vs last July — a one-time CAD 620 phone-system charge (Bell #1245) plus a small rate increase. Click ✦ for the full story.':null})});
+      const expC=D.COA.filter(a=>a.t==='X').reduce((x,a)=>x+g(a.n,P),0),expP=D.COA.filter(a=>a.t==='X').reduce((x,a)=>x+g(a.n,Q),0);
+      push('Operating expenses',expC,expP,{total:true});
+      push('Net income',revC-cogsC-expC,revP-cogsP-expP,{total:true});
+      return {isFin:true,finTabs:tabs,finColLabel:'Profit & loss',finRows:rows};
+    }
+    if(tab==='bs'){
+      const tb=D.trialBalance(L,ent,'2026-07'),tbP=D.trialBalance(L,ent,'2026-06');
+      const get=(rows2,n)=>{const r=rows2.find(x=>x.n===n);return r?r.bal:0};
+      const ni=r2=>-(r2.filter(x=>'RCX'.includes(x.t)).reduce((a,x)=>a+x.bal,0));
+      D.COA.filter(a=>a.t==='A').forEach(a=>{const c=get(tb,a.n),p2=get(tbP,a.n);if(Math.abs(c)<.01&&Math.abs(p2)<.01)return;push(a.n+' · '+a.name,c,p2,{open:()=>this.openDrill(a.n+' — '+a.name,'July 2026 activity',D.glTxns(L,a.n,ent,'2026-07'),{acct:a.n})})});
+      const totA=D.COA.filter(a=>a.t==='A').reduce((x,a)=>x+get(tb,a.n),0),totAP2=D.COA.filter(a=>a.t==='A').reduce((x,a)=>x+get(tbP,a.n),0);
+      push('Total assets',totA,totAP2,{total:true});
+      D.COA.filter(a=>a.t==='L').forEach(a=>{const c=-get(tb,a.n),p2=-get(tbP,a.n);if(Math.abs(c)<.01&&Math.abs(p2)<.01)return;push(a.n+' · '+a.name,c,p2,{open:()=>this.openDrill(a.n+' — '+a.name,'July 2026 activity',D.glTxns(L,a.n,ent,'2026-07'),{acct:a.n}),note:a.n==='2000'?'This one AP figure rolls up from the Vendors sub-ledger — every vendor balance ties to it.':null})});
+      const totL=D.COA.filter(a=>a.t==='L').reduce((x,a)=>x-get(tb,a.n),0),totLP=D.COA.filter(a=>a.t==='L').reduce((x,a)=>x-get(tbP,a.n),0);
+      push('Total liabilities',totL,totLP,{total:true});
+      const eq=-get(tb,'3000')-get(tb,'3900')+ni(tb),eqP=-get(tbP,'3000')-get(tbP,'3900')+ni(tbP);
+      push('Equity (incl. current earnings)',eq,eqP,{total:true});
+      push('Liabilities + equity — ties to assets ✓',totL+eq,totLP+eqP,{total:true});
+      return {isFin:true,finTabs:tabs,finColLabel:'Balance sheet',finRows:rows};
+    }
+    const P='2026-07',cashAccts=['1000','1010','1020'];
+    const cashTx=D.txnsFor(L,ent,P).filter(t=>t.lines.some(l=>cashAccts.includes(l.acct)));
+    const bucket=(name,fil)=>{const v=cashTx.filter(fil).reduce((a,t)=>a+t.lines.filter(l=>cashAccts.includes(l.acct)).reduce((x,l)=>x+(l.dr||0)-(l.cr||0),0)*(ent==='GROUP'?D.FX[D.ENTITIES.find(e=>e.id===t.entity).cur]:1),0);push(name,v,null,{open:()=>this.openDrill(name,'Cash movements · July 2026',cashTx.filter(fil))});return v};
+    let net=0;
+    net+=bucket('Receipts from customers',t=>t.desc.includes('receipt'));
+    net+=bucket('Payments to suppliers',t=>t.desc.includes('Bill payment'));
+    net+=bucket('Payroll paid',t=>t.src==='Payroll');
+    net+=bucket('Bank charges & other',t=>t.src==='Bank'&&!t.desc.includes('receipt')&&!t.desc.includes('Bill payment'));
+    push('Net change in cash',net,null,{total:true});
+    return {isFin:true,finTabs:tabs,finColLabel:'Cash flow — operating (direct method)',finRows:rows};
+  }
+  vals_ap(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='ap')return {isAP:s.screen==='ap',apRows:[],apTabs:[],apModal:!1};
+    const q=s.apQ||{},tab=s.apTab||'all';
+    const isDup=(s.apVendor==='Bell Canada')&&(s.apInvNo||'').trim()==='1245';
+    const vend=s.apVendor||'Bell Canada';
+    const vinfo={'Bell Canada':['6400 Telephone','G&A','GST 5%','Matches 14 prior bills from this vendor',97],'AWS (Amazon Web Services)':['5000 Cloud Hosting','Engineering','GST 5%','Usage invoice pattern, 24 prior bills',96],'Deloitte LLP':['6300 Professional Fees','G&A','GST 5%','Retainer per engagement letter',95],'Northgate Properties':['6100 Rent','G&A','GST 5%','Fixed monthly lease',99],'Staples Business':['6700 Office Supplies','G&A','GST 5%','Usual vendor pattern',96],'Harbour Print Co.':['6800 Marketing','Sales','GST 5%','New vendor — inferred from line items',84]}[vend]||['6700 Office Supplies','G&A','GST 5%','Best guess — please check',78];
+    const bills=D.AP_QUEUE.filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
+    const rows=bills.map(b=>({vendor:b.vendor,invno:b.invno,conf:b.conf,amt:D.fmt2(b.amt,'CAD'),note:b.note?'Approved via WhatsApp':null,
+      line2:(b.acct?b.acct+' '+D.acctName(b.acct):'⚠ Account: your call')+' · '+(b.dept||'—')+' · '+b.date+' — ✦ '+b.reason,
+      match:b.match||null,bg:b.status==='escalated'?'rgba(192,57,43,.03)':'#fff',
+      chipBg:b.conf>=95?'rgba(45,212,191,.16)':(b.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
+      chipFg:b.conf>=95?'#0d7a6d':(b.conf>=80?'#C77F0A':'#C0392B'),
+      actions:b.status!=='auto',approve:()=>{this.setState({apDone:[...(s.apDone||[]),b.id]});this.say('Approved & posted — audit entry written')},
+      statusLabel:b.status==='auto'?(b.paid?'Paid ✓ (bank confirmed)':'Auto-posted · logged'):null,statusColor:b.paid?'#1E7A46':'#5B6472'}));
+    const importRows=[{vendor:'WeWork Denver',desc:'August workspace',coding:'6100 Rent · G&A · from column D',amt:'2,340.00 CAD',conf:97},{vendor:'Gusto',desc:'Payroll service fee',coding:'6200 Software · G&A',amt:'189.00 CAD',conf:96},{vendor:'Maple Systems',desc:'Project allocation — Meridian 60% / Core 40%',coding:'5100 split by project columns',amt:'4,120.00 CAD',conf:91},{vendor:'Uber for Business',desc:'Team travel (12 rides)',coding:'6500 Travel · Sales',amt:'418.55 CAD',conf:94},{vendor:'Staples Business',desc:'Office chairs ×2',coding:'6700 Office Supplies · G&A',amt:'642.10 CAD',conf:95},{vendor:'Notion Labs',desc:'Annual plan',coding:'6200 Software · prepaid split over 12 mo',amt:'1,608.00 CAD',conf:88}];
+    const scanRows=[{vendor:'Bell Canada',desc:'Scanned: invoice #1263 (photo)',coding:'6400 Telephone · G&A · GST extracted',amt:'1,304.10 CAD',conf:97},{vendor:'Petro-Canada',desc:'Scanned: fuel receipt',coding:'6500 Travel · Operations',amt:'86.40 CAD',conf:93},{vendor:'Tim Hortons',desc:'Scanned: team breakfast receipt',coding:'6700 Office · meals 50% deductible flag',amt:'42.75 CAD',conf:90}];
+    return {isAP:true,
+      apNew:!!s.apNew,apNewToggle:()=>this.setState({apNew:!s.apNew}),
+      apVendor:vend,apSetVendor:e=>this.setState({apVendor:e.target.value}),
+      apVendorOpts:['Bell Canada','AWS (Amazon Web Services)','Deloitte LLP','Northgate Properties','Staples Business','Harbour Print Co.'],
+      apInvNo:s.apInvNo||'',apSetInvNo:e=>this.setState({apInvNo:e.target.value}),
+      apInvBorder:isDup?'#C77F0A':'#d7dfec',apDup:isDup,
+      apOpenDup:()=>{const t=this.ledger.find(x=>x.invno==='1245'&&x.entity==='CA');if(t)this.openTxn(t)},
+      apAmt:s.apAmt||'',apSetAmt:e=>this.setState({apAmt:e.target.value}),
+      apSuggest:[{label:vinfo[0],conf:vinfo[4],why:vinfo[3]},{label:vinfo[1],conf:Math.max(vinfo[4]-3,70),why:'Department inferred from vendor history'},{label:vinfo[2],conf:99,why:'Tax jurisdiction: Ontario, Canada'}],
+      apSuggestWhy:'✦ '+vinfo[3],
+      apSave:()=>{this.say(isDup?'Saved anyway — flagged for Controller review (possible duplicate)':'Bill saved — queued at '+vinfo[4]+'% confidence');this.setState({apNew:false,apInvNo:'',apAmt:''})},
+      apTabs:[['all','All ('+D.AP_QUEUE.length+')'],['auto','Auto-posted (8)'],['review','In review (3)'],['escalated','Escalated (1)']].map(t=>({label:t[1],go:()=>this.setState({apTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'})),
+      apRows:rows,apAging0:'31.2k',apAging30:'4.4k',apAging60:'0',
+      apGoTB:e=>{e.preventDefault();this.setState({screen:'tb'})},
+      apImportOpen:()=>this.setState({apModal:'import',apParsed:false}),
+      apScanOpen:()=>this.setState({apModal:'scan',apParsed:false}),
+      apModal:!!s.apModal,apModalClose:()=>this.setState({apModal:null}),
+      apModalTitle:s.apModal==='scan'?'Scan invoices':'Batch / Excel import',
+      apModalSub:s.apModal==='scan'?'Drop photos or PDFs — I\u2019ll read, code, and queue them for your check':'Upload a spreadsheet of bills or a payroll journal with project allocations',
+      apModalDrop:!s.apParsed,apModalDropText:s.apModal==='scan'?'📷 Drop invoice photos or PDFs here':'📄 Drop bills.xlsx or payroll-journal.xlsx here',
+      apModalParse:()=>this.setState({apParsed:true}),
+      apModalRows:s.apParsed?(s.apModal==='scan'?scanRows:importRows):null,
+      apModalCount:s.apModal==='scan'?3:6,
+      apModalPost:()=>{this.setState({apModal:null});this.say((s.apModal==='scan'?3:6)+' bills posted to your review queue — nothing hits the ledger until you approve')}};
+  }
+  vals_ar(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='ar')return {isAR:s.screen==='ar',arRows:[],arDrafts:[]};
+    return {isAR:true,arAging:'Current 85.3k · 1–30 20.0k · 31–60 8.9k',
+      arRows:D.AR_ROWS.map(a=>({cust:a.cust,inv:a.inv,due:a.due.slice(5),amt:D.fmt(a.amt,'CAD'),age:a.age,
+        ageColor:a.age==='Current'||a.age==='—'?'#5B6472':(a.age==='1–30'?'#C77F0A':'#C0392B'),
+        status:a.status,stColor:a.status==='Paid'?'#1E7A46':(a.status.includes('Over')?'#C0392B':(a.status.includes('Partial')?'#C77F0A':'#5B6472')),
+        matched:a.status==='Paid'||a.status==='Partially paid'})),
+      arGoBank:e=>{e.preventDefault();this.setState({screen:'banking'})},
+      arDrafts:D.COLLECTION_DRAFTS.filter(d=>!(s.arSent||[]).includes(d.inv)).map(d=>({...d,send:()=>{this.setState({arSent:[...(s.arSent||[]),d.inv]});this.say('Reminder sent to '+d.cust+' — logged to audit trail')}}))};
+  }
+  vals_bank(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='banking')return {isBank:s.screen==='banking',bankCards:[],bankEx:[]};
+    const L=this.ledger,ent=s.entity==='GROUP'?'CA':s.entity;
+    const done=s.bankDone||[];
+    return {isBank:true,
+      bankCards:D.BANKS.map(b=>{const bal=D.glTotal(L,b.acct,ent,'2026-07');const pct=Math.round(b.matched/b.lines*100);
+        return {name:b.name,bank:b.bank,feed:b.feed,bal:D.fmt(Math.round(bal),this.D.ENTITIES.find(e=>e.id===ent).cur),lines:b.lines,matched:b.matched,pct:pct+'%',barColor:pct>92?'#2DD4BF':'#C77F0A',
+          recLabel:pct===100?'✓ Fully reconciled':(b.lines-b.matched)+' to resolve · reconciles daily',recColor:pct>92?'#1E7A46':'#C77F0A'}}),
+      bankOpen:D.REC_EXCEPTIONS.filter(x=>!done.includes(x.id)).length,
+      bankEx:D.REC_EXCEPTIONS.filter(x=>!done.includes(x.id)).map(x=>({desc:x.desc,date:x.date.slice(5),ask:x.ask,conf:x.conf,
+        amt:D.fmt2(x.amt,'CAD'),amtColor:x.amt<0?'#C0392B':'#1E7A46',
+        chipBg:x.conf>=95?'rgba(45,212,191,.16)':(x.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
+        chipFg:x.conf>=95?'#0d7a6d':(x.conf>=80?'#C77F0A':'#C0392B'),
+        approve:()=>{this.setState({bankDone:[...done,x.id]});this.say('Matched & reconciled — audit entry written')}}))};
+  }
+  vals_rep(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='reports')return {isRep:s.screen==='reports',repTabs:[],xlRows:[],chRows:[],rbDims:[],rbRows:[],buRows:[]};
+    const L=this.ledger,ent=s.entity,tab=s.repTab||'xl';
+    const tabs=[['xl','Excel / XLGL'],['ch','Change analysis'],['rb','Report builder'],['bu','Budget vs actual'],['bp','Board pack']].map(t=>({label:t[1],go:()=>this.setState({repTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'}));
+    const out={isRep:true,repTabs:tabs,repXL:tab==='xl',repCH:tab==='ch',repRB:tab==='rb',repBU:tab==='bu',repBP:tab==='bp',xlRows:[],chRows:[],rbDims:[],rbRows:[],buRows:[]};
+    const entName=D.ENTITIES.find(e=>e.id===ent).name;
+    if(tab==='xl'){
+      const accts=['6000','6100','6200','6300','6400','6500','6600','6700','6900','6950'];
+      const sel=s.xlSel||{r:4,c:3};
+      const fmla=(a,p)=>`=DT.GL("${a}","${p==='2026-07'?'Jul-2026':'Jun-2026'}","${entName}")`;
+      const rows=[];
+      rows.push({num:1,cells:[{t:'Operating expenses — '+entName,align:'left',fw:'700',color:'#12284B',bg:'#fff',outline:'none',font:'inherit',sel:()=>{}},{t:'Jun 2026',align:'right',fw:'700',color:'#5B6472',bg:'#fff',outline:'none',font:'inherit',sel:()=>{}},{t:'Jul 2026',align:'right',fw:'700',color:'#5B6472',bg:'#fff',outline:'none',font:'inherit',sel:()=>{}},{t:'Δ',align:'right',fw:'700',color:'#5B6472',bg:'#fff',outline:'none',font:'inherit',sel:()=>{}},{t:'Δ %',align:'right',fw:'700',color:'#5B6472',bg:'#fff',outline:'none',font:'inherit',sel:()=>{}}]});
+      accts.forEach((a,i)=>{
+        const jun=D.glTotal(L,a,ent,'2026-06'),jul=D.glTotal(L,a,ent,'2026-07'),d=jul-jun,pc=jun?Math.round(d/jun*1000)/10:0;
+        const r=i+2;
+        const mk=(c,t,align,color,fw,formula,drill)=>({t,align,fw:fw||'400',color:color||'#222',font:'inherit',
+          bg:sel.r===r&&sel.c===c?'rgba(45,212,191,.12)':'#fff',outline:sel.r===r&&sel.c===c?'2px solid #2DD4BF':'none',
+          sel:()=>{const now=Date.now();const dbl=s.xlLast&&s.xlLast.r===r&&s.xlLast.c===c&&now-s.xlLast.t<450;this.setState({xlSel:{r,c,formula,acct:a,per:c===2?'2026-06':'2026-07'},xlLast:{r,c,t:now}});if(dbl&&drill)drill()}});
+        rows.push({num:r,cells:[
+          mk(1,a+' · '+D.acctName(a),'left','#222','600',`="${a} · ${D.acctName(a)}"`),
+          mk(2,D.fmt(Math.round(jun)),'right',null,null,fmla(a,'2026-06'),()=>this.openDrill(a+' — '+D.acctName(a),entName+' · June 2026',D.glTxns(L,a,ent,'2026-06'),{acct:a})),
+          mk(3,D.fmt(Math.round(jul)),'right',null,null,fmla(a,'2026-07'),()=>this.openDrill(a+' — '+D.acctName(a),entName+' · July 2026',D.glTxns(L,a,ent,'2026-07'),{acct:a})),
+          mk(4,D.fmt(Math.round(d)),'right',Math.abs(pc)>15?'#C0392B':'#222',null,`=C${r}-B${r}`),
+          mk(5,(pc>0?'+':'')+pc+'%','right',Math.abs(pc)>15?'#C0392B':(Math.abs(pc)>5?'#C77F0A':'#5B6472'),'600',`=IFERROR(D${r}/B${r},0)`)]});
+      });
+      const totJun=accts.reduce((x,a)=>x+D.glTotal(L,a,ent,'2026-06'),0),totJul=accts.reduce((x,a)=>x+D.glTotal(L,a,ent,'2026-07'),0);
+      rows.push({num:accts.length+2,cells:[{t:'Total',align:'left',fw:'800',color:'#12284B',bg:'#F4F7FC',outline:'none',font:'inherit',sel:()=>{}},{t:D.fmt(Math.round(totJun)),align:'right',fw:'800',color:'#12284B',bg:'#F4F7FC',outline:'none',font:'inherit',sel:()=>{}},{t:D.fmt(Math.round(totJul)),align:'right',fw:'800',color:'#12284B',bg:'#F4F7FC',outline:'none',font:'inherit',sel:()=>{}},{t:D.fmt(Math.round(totJul-totJun)),align:'right',fw:'800',color:'#12284B',bg:'#F4F7FC',outline:'none',font:'inherit',sel:()=>{}},{t:'',align:'right',fw:'400',color:'#222',bg:'#F4F7FC',outline:'none',font:'inherit',sel:()=>{}}]});
+      const curSel=s.xlSel||{r:5,c:3,formula:fmla('6400','2026-07'),acct:'6400',per:'2026-07'};
+      out.xlColHead=['A','B','C','D','E'];out.xlRows=rows;
+      out.xlSelRef=String.fromCharCode(64+(curSel.c||3))+(curSel.r||5);
+      out.xlSelFormula=curSel.formula||fmla('6400','2026-07');
+      out.xlCopy=()=>this.say('Formula copied — paste it straight into Excel with the XLGL add-in');
+      out.xlRibbon=[{label:'⟳ Refresh',go:()=>this.say('Refreshed from the ledger — 0.4s')},{label:'ƒx Insert Formula',go:()=>this.say('Formula wizard: DT.GL(account, period, entity) — demo')},{label:'▾ Drill Down',go:()=>{if(curSel.acct)this.openDrill(curSel.acct+' — '+D.acctName(curSel.acct),entName+' · '+(curSel.per==='2026-06'?'June':'July')+' 2026',D.glTxns(L,curSel.acct,ent,curSel.per||'2026-07'),{acct:curSel.acct})}},{label:'⇩ Export',go:()=>this.say('opex-jul2026.xlsx exported with live formulas (demo)')}];
+    }
+    if(tab==='ch'){
+      const base=s.chBase||'2026-06';
+      out.chBase=base;out.chSetBase=e=>this.setState({chBase:e.target.value});
+      const cand=D.COA.filter(a=>'XC'.includes(a.t));
+      const moves=cand.map(a=>{const from=D.glTotal(L,a.n,ent,base),to=D.glTotal(L,a.n,ent,'2026-07');return {a,from,to,d:to-from,pc:from?Math.round((to/from-1)*1000)/10:0}}).filter(m=>Math.abs(m.d)>1).sort((x,y)=>Math.abs(y.pc)-Math.abs(x.pc)).slice(0,6);
+      const why=(m)=>{
+        if(m.a.n==='6400'&&(ent==='CA'||ent==='GROUP'))return 'One-time CAD 620 charge from Bell Canada for a new phone system (invoice #1245, dated 12 Jun, posted 3 Jul) explains 94% of this change. The rest is a 3% rate increase effective April. Without the one-time item, telephone would be roughly flat.';
+        if(m.a.n==='5100')return 'Contractor hours on the Meridian Deploy project ran 22% above June (bill MS-1188). Project timing — the plan catches up in August, so expect this to reverse.';
+        if(m.pc>0)return 'Driven by '+(m.d>500?'a higher':'a slightly higher')+' bill from the usual vendor this period — no new vendors, no unusual entries. Within normal monthly variation.';
+        return 'Lower activity this period — fewer transactions hit this account. No missing bills detected (all recurring vendors accounted for).'};
+      out.chRows=moves.map(m=>({name:m.a.n+' · '+m.a.name,from:this.fm(Math.round(m.from)),to:this.fm(Math.round(m.to)),
+        delta:(m.d>0?'+':'')+this.fm(Math.round(m.d)),pct:(m.pc>0?'+':'')+m.pc+'%',
+        dirColor:Math.abs(m.pc)>15?'#C0392B':(Math.abs(m.pc)>5?'#C77F0A':'#5B6472'),dirBg:Math.abs(m.pc)>15?'rgba(192,57,43,.08)':(Math.abs(m.pc)>5?'rgba(199,127,10,.09)':'#F4F7FC'),
+        why:why(m),open:()=>this.openDrill(m.a.n+' — '+m.a.name,entName+' · July 2026',D.glTxns(L,m.a.n,ent,'2026-07'),{acct:m.a.n})}));
+    }
+    if(tab==='rb'){
+      const by=s.rbBy||'Department';
+      out.rbBy=by;
+      out.rbDims=['Department','Project','Vendor','Account','Entity','Source'].map(d2=>({label:d2,go:()=>this.setState({rbBy:d2}),bg:by===d2?'#12284B':'#fff',fg:by===d2?'#fff':'#1F4E79',bd:by===d2?'#12284B':'#d7dfec'}));
+      out.rbSave=()=>this.say('Saved as "Expenses by '+by+'" — it\u2019ll refresh live from the ledger');
+      const tx=D.txnsFor(L,ent,'2026-07').filter(t=>t.lines.some(l=>{const c=D.COA.find(x=>x.n===l.acct);return c&&'XC'.includes(c.t)}));
+      const key=t=>by==='Department'?(t.dept||'Unallocated'):by==='Project'?(t.proj&&t.proj!=='—'?t.proj:'No project'):by==='Vendor'?(t.vendor||'Internal'):by==='Source'?t.src:by==='Entity'?D.ENTITIES.find(e=>e.id===t.entity).name:(t.lines[0].acct+' '+D.acctName(t.lines[0].acct));
+      const agg={};tx.forEach(t=>{const fx=ent==='GROUP'?D.FX[D.ENTITIES.find(e=>e.id===t.entity).cur]:1;const amt=t.lines.reduce((a2,l)=>{const c=D.COA.find(x=>x.n===l.acct);return a2+(c&&'XC'.includes(c.t)?((l.dr||0)-(l.cr||0))*fx:0)},0);agg[key(t)]=(agg[key(t)]||0)+amt});
+      const arr=Object.entries(agg).sort((a2,b2)=>b2[1]-a2[1]).slice(0,8);const max=Math.max(...arr.map(x=>x[1]),1);
+      out.rbRows=arr.map(x=>({label:x[0],amt:this.fm(Math.round(x[1])),pct:Math.max(Math.round(x[1]/max*100),2)+'%'}));
+    }
+    if(tab==='bu'){
+      const items=[['Revenue',null,-1],['5000 · Cloud Hosting','5000',1],['5100 · Implementation Labour','5100',1],['6000 · Salaries & Benefits','6000',1],['6100 · Rent','6100',1],['6400 · Telephone','6400',1],['6500 · Travel','6500',1]];
+      out.buImport=()=>this.say('budget-fy2026.xlsx re-imported — 214 lines mapped automatically');
+      out.buRows=items.map(it=>{
+        let act;if(it[1])act=D.glTotal(L,it[1],ent,'2026-07');else act=-['4000','4100'].reduce((a2,n)=>a2+D.glTotal(L,n,ent,'2026-07'),0);
+        const bud=it[0]==='6400'&&(ent==='CA'||ent==='GROUP')?Math.round(act*.66):Math.round(act*(it[2]<0?1.03:(it[1]==='5100'?.82:.97)));
+        const v=act-bud,pc=bud?Math.round(v/bud*1000)/10:0;const bad=it[2]>0?v>0:v<0;
+        return {name:it[0],act:this.fm(Math.round(act)),bud:this.fm(bud),var:(v>0?'+':'')+this.fm(Math.round(v)),pct:(pc>0?'+':'')+pc+'%',vc:Math.abs(pc)>10&&bad?'#C0392B':(Math.abs(pc)>10?'#1E7A46':'#5B6472'),fw:'400',bg:'#fff'}});
+    }
+    if(tab==='bp'){
+      out.bpReady=!!s.bpReady;out.bpGen=()=>{this.setState({bpReady:true});this.say('Board pack drafted — every number links back to the ledger')};
+      out.bpExport=()=>this.say('board-pack-jul2026.pdf exported (demo)');
+      out.bpText='Highlights\n• Consolidated revenue of CAD 289k, up 1.5% month-over-month and 16% year-over-year.\n• Cash of CAD 512k across three entities; runway comfortably above 12 months.\n• Gross margin steady at 71%; no pricing changes in the quarter.\n\nWatch items\n• Telephone expense up 54% YoY on a one-time phone-system purchase (CAD 620) — run-rate normal from August.\n• Meridian Deploy contractor spend ahead of plan by 22% (timing).\n\nGovernance\n• 15 controls monitored continuously: 13 passing, 1 exception in remediation, 1 attestation pending.\n• Zero agent actions taken without required human approval.';
+    }
+    return out;
+  }
+  vals_ctl(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='controls')return {isCtl:s.screen==='controls',ctlTabs:[],ctlRows:[],ctlStats:[],traceRows:[],pbcRows:[],confRows:[],taxRows:[],trailRows:[]};
+    const tab=s.ctlTab||(s.persona==='External Auditor'?'ext':'int');
+    const tabs=[['int','Internal'],['ext','External'],['tax','Tax'],['trail','Audit trail']].map(t=>({label:t[1],go:()=>this.setState({ctlTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'}));
+    const out={isCtl:true,ctlTabs:tabs,ctlInternal:tab==='int',ctlExternal:tab==='ext',ctlTax:tab==='tax',ctlTrail:tab==='trail',ctlRows:[],ctlStats:[],traceRows:[],pbcRows:[],confRows:[],taxRows:[],trailRows:[]};
+    if(tab==='int'){
+      const att=!!s.ctlAttested;
+      out.ctlStats=[{label:'Controls monitored',value:'15',accent:'#1F4E79'},{label:'Passing',value:att?'14':'13',accent:'#1E7A46'},{label:'Exceptions',value:'1',accent:'#C0392B'},{label:'Evidence auto-collected',value:'96%',accent:'#2DD4BF'}];
+      const selId=s.ctlSel||'C-01';
+      out.ctlRows=D.CONTROLS.map(c=>({id:c.id,process:c.process,risk:c.risk,objective:c.objective,assertion:c.assertion,freq:c.freq,owner:c.owner,
+        stLabel:c.id==='C-12'&&att?'Pass ✓':(c.status==='pass'?'Pass ✓':(c.status==='exception'?'Exception':'Pending')),
+        stColor:c.id==='C-12'&&att?'#1E7A46':(c.status==='pass'?'#1E7A46':(c.status==='exception'?'#C0392B':'#C77F0A')),
+        bg:selId===c.id?'rgba(45,212,191,.06)':(c.status==='exception'?'rgba(192,57,43,.03)':'#fff'),
+        open:()=>this.setState({ctlSel:c.id})}));
+      const sel=D.CONTROLS.find(c=>c.id===selId);
+      out.ctlSel=true;out.ctlSelId=sel.id;out.ctlSelName=sel.objective;out.ctlSelTested=sel.tested;out.ctlSelEvidence=sel.evidence;
+      out.ctlSelDocs=[{name:sel.id+'-evidence-log-jul2026.pdf'},{name:'sample-transactions-'+sel.id.toLowerCase()+'.xlsx'},{name:'monitoring-rule-definition.json'}].map(d2=>({name:d2.name,view:()=>this.say('Opening '+d2.name+' (demo) — every item links to its source transaction')}));
+      out.ctlAttested=att;out.ctlNotAttested=!att;
+      out.ctlAttest=()=>{this.setState({ctlAttested:true});this.say('Attestation recorded with timestamp & attachment — written to the immutable trail')};
+    }
+    if(tab==='ext'){
+      out.traceRows=D.TRACE.map((t,i)=>({n:i+1,step:t.step,label:t.label,detail:t.detail,date:t.date.slice(5),line:i<D.TRACE.length-1,
+        dotBg:i<5?'#2DD4BF':'#F4F7FC',dotFg:i<5?'#0c2d29':'#C77F0A',
+        open:()=>{if(t.step==='Journal entry'){const tx=this.ledger.find(x=>x.entity==='CA'&&x.period==='2026-07'&&x.customer==='Meridian Foods Group'&&x.src==='AR');if(tx){this.openTxn(tx);return}}this.say(t.step+': '+t.label+' — source opens here (demo)')}}));
+      out.pbcRows=[{name:'July trial balance + leadsheets',status:'Ready ✓',color:'#1E7A46'},{name:'Revenue samples (25) — traces',status:'21 / 25',color:'#C77F0A'},{name:'Bank statements & rec — all accounts',status:'Ready ✓',color:'#1E7A46'},{name:'AP cut-off testing support',status:'Ready ✓',color:'#1E7A46'},{name:'Related-party listing',status:'In progress',color:'#C77F0A'}];
+      out.confRows=[{name:'RBC — bank confirmation',status:'Returned ✓',color:'#1E7A46'},{name:'Meridian Foods — AR balance',status:'Awaiting',color:'#C77F0A'},{name:'Harbourline — AR balance',status:'Awaiting',color:'#C77F0A'},{name:'Term loan — lender confirmation',status:'Returned ✓',color:'#1E7A46'}];
+    }
+    if(tab==='tax'){
+      const L=this.ledger;
+      out.taxRows=['CA','IN','US'].map(e=>{const cur=D.ENTITIES.find(x=>x.id===e).cur;
+        const net=-D.glTotal(L,'2100',e,'2026-07');
+        const outv=Math.round(net*1.8),inp=Math.round(outv-net);
+        return {name:D.ENTITIES.find(x=>x.id===e).name,regime:e==='CA'?'GST/HST · monthly filer':(e==='IN'?'GST · GSTR-3B monthly':'State sales tax · quarterly'),
+          out:D.fmt(outv,cur),inp:D.fmt(inp,cur),net:D.fmt(Math.round(net),cur),filing:e==='US'?'Due Oct 20':'Due Aug 31',fColor:'#5B6472'}});
+    }
+    if(tab==='trail'){
+      const L=this.ledger.filter(t=>t.entity==='CA'&&t.period==='2026-07'&&!t.opening).slice(0,9);
+      const extra=[
+        {when:'28 Jul · 14:02',actor:'A. Chen (CFO)',ai:false,action:'Attested control C-12 — monthly review performed',change:'pending → attested',hash:D.fakeHash('att').slice(0,10)},
+        {when:'28 Jul · 09:15',actor:'S. Patel (Controller)',ai:false,action:'Approved bill MS-1188 coding after review',change:'proposed → approved',hash:D.fakeHash('appr').slice(0,10)},
+        {when:'27 Jul · 22:00',actor:'Audit Agent',ai:true,action:'Nightly hash-chain verification — 1,412 entries',change:'✓ intact',hash:D.fakeHash('chain').slice(0,10)}];
+      out.trailRows=[...extra,...L.map(t=>({when:t.date.slice(5)+' · 06:12',actor:t.agent||'S. Patel',ai:!!t.ai,action:(t.ai?'Created & coded: ':'Posted: ')+t.desc,change:'— → posted @ '+(t.conf||99)+'%',hash:D.fakeHash(t.id).slice(0,10)}))];
+      out.trailOK=!!s.trailOK;out.trailVerify=()=>{this.setState({trailOK:true});this.say('Recomputed every hash from entry #1 — no alterations found')};
+    }
+    return out;
+  }
+  vals_ag(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='agents')return {isAg:s.screen==='agents',agRows:[],agQueue:[]};
+    const done=s.agDone||[];
+    const queue=[
+      {id:'q1',conf:88,what:'Bill MS-1188 — Maple Systems · 7,770 CAD · price 22% over PO'},
+      {id:'q2',conf:84,what:'Bill HP-5521 — Harbour Print (new vendor) · 1,420 CAD'},
+      {id:'q3',conf:82,what:'Bill AWS-88790 — possible new sub-account · 2,210.90 CAD'},
+      {id:'q4',conf:92,what:'Bank match: FX fee 42.50 → 6950 Bank Charges'},
+      {id:'q5',conf:97,what:'Mark bill SL-4471 paid — bank confirmation received'},
+      {id:'q6',conf:90,what:'Collection reminder to Lakeside Pulp & Paper — approve wording'}].filter(q=>!done.includes(q.id));
+    return {isAg:true,agRows:D.AGENTS,
+      agHi:queue.filter(q=>q.conf>=90).length,
+      agBulk:()=>{this.setState({agDone:[...done,...queue.filter(q=>q.conf>=90).map(q=>q.id)]});this.say('Approved '+queue.filter(q=>q.conf>=90).length+' items — each logged individually to the audit trail')},
+      agQueue:queue.map(q=>({conf:q.conf,what:q.what,
+        chipBg:q.conf>=95?'rgba(45,212,191,.16)':(q.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
+        chipFg:q.conf>=95?'#0d7a6d':(q.conf>=80?'#C77F0A':'#C0392B'),
+        approve:()=>{this.setState({agDone:[...done,q.id]});this.say('Approved — audit entry written')}})),
+      agEmpty:queue.length===0};
+  }
+  vals_set(){
+    const s=this.state;if(this.state.screen!=='settings')return {isSet:false};
+    const tone=s.setTone||'Efficient & cheerful',len=s.setLen||'Brief',avoid=s.setAvoid||['synergy','leverage','ERROR','invalid'];
+    const previews={'Efficient & cheerful':'Telephone is up 54% — one-time phone system charge. Want the details?','Neutral':'Telephone expense increased 54% due to a one-time charge.','Formal':'Telephone expense increased 54.5% year-over-year, attributable to a non-recurring installation charge.'};
+    return {isSet:true,
+      setTones:['Efficient & cheerful','Neutral','Formal'].map(t=>({label:t,go:()=>this.setState({setTone:t}),bg:tone===t?'#12284B':'#fff',fg:tone===t?'#fff':'#1F4E79',bd:tone===t?'#12284B':'#d7dfec'})),
+      setLens:['Brief','Standard','Detailed'].map(t=>({label:t,go:()=>this.setState({setLen:t}),bg:len===t?'#12284B':'#fff',fg:len===t?'#fff':'#1F4E79',bd:len===t?'#12284B':'#d7dfec'})),
+      setAvoid:avoid.map(w=>({word:w,rm:()=>this.setState({setAvoid:avoid.filter(x=>x!==w)})})),
+      setAvoidAdd:e=>{if(e.key==='Enter'&&e.target.value.trim()){this.setState({setAvoid:[...avoid,e.target.value.trim()]});e.target.value=''}},
+      setPreview:previews[tone],
+      setAgents:['AP Agent','AR/Collections Agent','Treasury Agent','Controller Agent'].map(n=>{const v=(s.setThresh||{})[n]||95;
+        return {name:n,val:v,set:e=>this.setState({setThresh:{...(s.setThresh||{}),[n]:+e.target.value}})}})};
+  }
+  vals_ent(){
+    const s=this.state,D=this.D;if(!D||s.screen!=='entities')return {isEnt:s.screen==='entities',entTree:[],entRows:[],entIC:[]};
+    const L=this.ledger;
+    const rev=e=>-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,e,'2026-07'),0)*D.FX[D.ENTITIES.find(x=>x.id===e).cur];
+    const exp=e=>D.COA.filter(a=>'XC'.includes(a.t)).reduce((a,c)=>a+D.glTotal(L,c.n,e,'2026-07'),0)*D.FX[D.ENTITIES.find(x=>x.id===e).cur];
+    const cash=D.cashByEntity(L,'2026-07');
+    const row=(name,f,o={})=>{const ca=f('CA'),iN=f('IN'),us=f('US');return {name,ca:D.fmt(Math.round(ca)),in:D.fmt(Math.round(iN)),us:D.fmt(Math.round(us)),grp:D.fmt(Math.round(ca+iN+us+(o.adj||0))),fw:o.total?'700':'400',bg:o.total?'#F4F7FC':'#fff'}};
+    return {isEnt:true,
+      entTree:['CA','IN','US'].map(e=>({name:D.ENTITIES.find(x=>x.id===e).name,cur:D.ENTITIES.find(x=>x.id===e).cur,bg:s.entity===e?'rgba(45,212,191,.1)':'transparent',go:()=>this.setState({entity:e})})),
+      entLead:()=>this.say('leadsheets-jul2026.xlsx exported — one tab per GL account, drill-through references included'),
+      entRows:[
+        row('Revenue',e=>rev(e)),
+        row('Expenses (incl. COGS)',e=>exp(e)),
+        row('Net income',e=>rev(e)-exp(e),{total:true}),
+        row('Cash',e=>cash.find(c=>c.entity===e).cad),
+        {name:'Intercompany eliminations',ca:'(4,100)',in:'—',us:'(1,360)',grp:'(5,460)',fw:'400',bg:'#fff'},
+        {name:'FX translation (CTA) — reporting only',ca:'—',in:'1,285',us:'855',grp:'2,140',fw:'400',bg:'rgba(45,212,191,.05)'}],
+      entIC:[{pair:'CA → IN · shared-services recharge',amt:'4,100 CAD',status:'Matched ✓'},{pair:'US → CA · platform license fee',amt:'1,000 USD',status:'Matched ✓'}]};
+  }
+  renderVals(){
+    let v={};
+    for(const k of Object.getOwnPropertyNames(Component.prototype)){
+      if(k.startsWith('vals_')){try{v={...v,...this[k]()}}catch(e){console.warn('vals fail',k,e)}}
+    }
+    return v;
+  }
+}
+</script>
+</body>
+</html>
