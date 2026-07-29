@@ -207,6 +207,7 @@ input{font-family:Inter,system-ui,sans-serif}
             <button onClick="{{ apNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">+ New bill</button>
             <button onClick="{{ apImportOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">⇪ Batch / Excel import</button>
             <button onClick="{{ apScanOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">▣ Scan invoices</button>
+            <button onClick="{{ apPayToggle }}" style="border:1px solid rgba(30,122,70,.4);background:rgba(30,122,70,.06);color:#1E7A46;border-radius:8px;font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">⇢ Payment run ({{ apPayCount }})</button>
             <div style="margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#5B6472">
               <span>Aging: <b style="color:#12284B">Current {{ apAging0 }}</b> · 1–30 {{ apAging30 }} · 31+ <b style="color:#C0392B">{{ apAging60 }}</b></span>
             </div>
@@ -244,6 +245,33 @@ input{font-family:Inter,system-ui,sans-serif}
                 <span style="font-size:11px;color:#5B6472;font-style:italic">{{ apSuggestWhy }}</span>
                 <button onClick="{{ apSave }}" style="margin-left:auto;border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer">✓ Looks right — save bill</button>
               </div>
+            </div>
+          </sc-if>
+          <!-- payment run -->
+          <sc-if value="{{ apPayOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid rgba(30,122,70,.35);border-radius:12px;padding:16px 18px;margin-bottom:14px;animation:dvfade .2s ease">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px">
+                <b style="font-size:13.5px;color:#12284B">Payment run — approved bills, ready to pay</b>
+                <span style="font-size:11px;color:#5B6472">from RBC ····4417 (Operating)</span>
+                <button onClick="{{ apPayToggle }}" style="margin-left:auto;border:none;background:#F4F7FC;border-radius:6px;width:24px;height:24px;cursor:pointer;color:#5B6472">✕</button>
+              </div>
+              <div style="font-size:11px;color:#5B6472;margin-bottom:10px">The Treasury Agent assembled this run. <b style="color:#1E7A46">You release it</b> — agents never move money on their own (policy P-5). Each payment is confirmed back by the bank and marked Paid automatically.</div>
+              <div style="border:1px solid #eef2f8;border-radius:9px;overflow:hidden;margin-bottom:10px">
+                <sc-for list="{{ apPayRows }}" as="py" hint-placeholder-count="4">
+                  <div style="display:flex;gap:10px;padding:8px 13px;border-bottom:1px solid #f2f5fa;font-size:12px;align-items:center;background:{{ py.bg }}">
+                    <span style="flex:1;min-width:0"><b style="color:#222">{{ py.vendor }}</b> <span style="color:#5B6472;font-size:11px">· #{{ py.invno }}</span></span>
+                    <span style="flex:none;font-weight:700;color:#12284B;font-variant-numeric:tabular-nums">{{ py.amt }}</span>
+                    <span style="flex:none;width:220px;text-align:right;font-size:11px;font-weight:700;color:{{ py.stColor }};animation:{{ py.anim }}">{{ py.status }}</span>
+                  </div>
+                </sc-for>
+                <div style="display:flex;padding:8px 13px;font-size:12.5px;font-weight:700;color:#12284B;background:#F4F7FC"><span style="flex:1">Total</span><span style="font-variant-numeric:tabular-nums">{{ apPayTotal }}</span><span style="width:220px"></span></div>
+              </div>
+              <sc-if value="{{ apPayIdle }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ apPayGo }}" style="border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12.5px;font-weight:700;padding:9px 16px;cursor:pointer">✓ Release payment run — {{ apPayCount }} payments · {{ apPayTotal }}</button>
+              </sc-if>
+              <sc-if value="{{ apPayDone }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:12px;color:#1E7A46;font-weight:700;animation:dvfade .3s ease">✓ All {{ apPayCount }} payments bank-confirmed · bills marked Paid · receipts written to the immutable trail</div>
+              </sc-if>
             </div>
           </sc-if>
           <!-- queue -->
@@ -315,8 +343,46 @@ input{font-family:Inter,system-ui,sans-serif}
       <!-- ============ AR ============ -->
       <sc-if value="{{ isAR }}" hint-placeholder-val="{{ false }}">
         <div style="animation:dvfade .25s ease;display:grid;grid-template-columns:1.6fr 1fr;gap:14px;align-items:start">
+          <!-- new invoice flow -->
+          <sc-if value="{{ arNew }}" hint-placeholder-val="{{ false }}">
+            <div style="grid-column:1/-1;background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:16px 18px;animation:dvfade .2s ease">
+              <div style="font-size:13.5px;font-weight:700;color:#12284B;margin-bottom:12px">New invoice — I'll fill it from the contract as you pick ✦</div>
+              <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Customer
+                  <select value="{{ arCust }}" onChange="{{ arSetCust }}" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;background:#fff;font-size:12.5px;padding:0 8px;margin-top:4px">
+                    <sc-for list="{{ arCustOpts }}" as="cu" hint-placeholder-count="5"><option value="{{ cu }}">{{ cu }}</option></sc-for>
+                  </select></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Invoice #
+                  <input value="{{ arNewNo }}" readonly style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;background:#F4F7FC;color:#5B6472"></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Date
+                  <input value="2026-07-29" readonly style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px"></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Amount (pre-filled)
+                  <input value="{{ arNewAmt }}" readonly style="width:100%;height:34px;border:1px solid rgba(45,212,191,.6);border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;text-align:right;background:rgba(45,212,191,.05);font-weight:700;color:#12284B"></label>
+              </div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+                <span style="font-size:11.5px;color:#5B6472;font-weight:600">Suggested:</span>
+                <sc-for list="{{ arSuggest }}" as="sg2" hint-placeholder-count="3">
+                  <span title="{{ sg2.why }}" style="display:inline-flex;align-items:center;gap:6px;background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.4);border-radius:7px;padding:5px 10px;font-size:11.5px;color:#12284B;cursor:help"><b>{{ sg2.label }}</b><span style="background:#2DD4BF;color:#0c2d29;font-size:9.5px;font-weight:700;border-radius:4px;padding:1px 5px">{{ sg2.conf }}%</span></span>
+                </sc-for>
+                <span style="font-size:11px;color:#5B6472;font-style:italic">✦ {{ arSuggestWhy }}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr auto;gap:14px;align-items:end">
+                <div style="border:1px solid #eef2f8;border-radius:9px;overflow:hidden">
+                  <div style="display:grid;grid-template-columns:70px 1fr 110px 110px;padding:6px 12px;background:#12284B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px"><span>Account</span><span></span><span style="text-align:right">Debit</span><span style="text-align:right">Credit</span></div>
+                  <sc-for list="{{ arNewLines }}" as="nl" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:70px 1fr 110px 110px;padding:5px 12px;font-size:11.5px;border-bottom:1px solid #f2f5fa"><span style="font-weight:700;color:#1F4E79">{{ nl.acct }}</span><span style="color:#222">{{ nl.name }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ nl.dr }}</span><span style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ nl.cr }}</span></div>
+                  </sc-for>
+                  <div style="padding:5px 12px;font-size:10.5px;color:#5B6472;background:#F4F7FC">This is the journal that will post on approval — debits = credits ✓ · nothing hits the ledger until you approve</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <button onClick="{{ arSave }}" style="border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:9px 16px;cursor:pointer">✓ Approve &amp; send invoice</button>
+                  <button onClick="{{ arNewToggle }}" style="border:1px solid #d7dfec;background:#fff;color:#222;border-radius:8px;font-size:12px;padding:8px 14px;cursor:pointer">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
           <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
-            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center"><b style="font-size:13px;color:#12284B">Customer invoices</b><span style="margin-left:auto;font-size:11px;color:#5B6472">Aging: {{ arAging }}</span></div>
+            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:9px"><b style="font-size:13px;color:#12284B">Customer invoices</b><button onClick="{{ arNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:7px;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer">+ New invoice</button><span style="margin-left:auto;font-size:11px;color:#5B6472">Aging: {{ arAging }}</span></div>
             <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:7px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Customer / invoice</span><span style="text-align:right">Amount</span><span>Age</span><span>Status</span><span></span></div>
             <sc-for list="{{ arRows }}" as="a" hint-placeholder-count="6">
               <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:8px 16px;border-bottom:1px solid #f2f5fa;font-size:12px;align-items:center">
@@ -1695,13 +1761,22 @@ class Component extends DCLogic {
     const vend=s.apVendor||'Bell Canada';
     const vinfo={'Bell Canada':['6400 Telephone','G&A','GST 5%','Matches 14 prior bills from this vendor',97],'AWS (Amazon Web Services)':['5000 Cloud Hosting','Engineering','GST 5%','Usage invoice pattern, 24 prior bills',96],'Deloitte LLP':['6300 Professional Fees','G&A','GST 5%','Retainer per engagement letter',95],'Northgate Properties':['6100 Rent','G&A','GST 5%','Fixed monthly lease',99],'Staples Business':['6700 Office Supplies','G&A','GST 5%','Usual vendor pattern',96],'Harbour Print Co.':['6800 Marketing','Sales','GST 5%','New vendor — inferred from line items',84]}[vend]||['6700 Office Supplies','G&A','GST 5%','Best guess — please check',78];
     const bills=D.AP_QUEUE.filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
+    const paidRun=s.apPaid||[];
     const rows=bills.map(b=>({vendor:b.vendor,invno:b.invno,conf:b.conf,amt:D.fmt2(b.amt,'CAD'),note:b.note?'Approved via WhatsApp':null,noteGo:()=>this.waStart(),
       line2:(b.acct?b.acct+' '+D.acctName(b.acct):'⚠ Account: your call')+' · '+(b.dept||'—')+' · '+b.date+' — ✦ '+b.reason,
       match:b.match||null,bg:b.status==='escalated'?'rgba(192,57,43,.03)':'#fff',
       chipBg:b.conf>=95?'rgba(45,212,191,.16)':(b.conf>=80?'rgba(199,127,10,.12)':'rgba(192,57,43,.1)'),
       chipFg:b.conf>=95?'#0d7a6d':(b.conf>=80?'#C77F0A':'#C0392B'),
       actions:b.status!=='auto',approve:()=>{this.setState({apDone:[...(s.apDone||[]),b.id]});this.say('Approved & posted — audit entry written')},
-      statusLabel:b.status==='auto'?(b.paid?'Paid ✓ (bank confirmed)':'Auto-posted · logged'):null,statusColor:b.paid?'#1E7A46':'#5B6472'}));
+      statusLabel:b.status==='auto'?((b.paid||paidRun.includes(b.id))?'Paid ✓ (bank confirmed)':'Auto-posted · logged'):null,statusColor:(b.paid||paidRun.includes(b.id))?'#1E7A46':'#5B6472'}));
+    // payment run — approved, unpaid, PO/pattern-clean bills assembled by the Treasury Agent
+    const PAYRUN=[{id:'B02',vendor:'Northgate Properties',invno:'NP-2607',amt:8925.00},{id:'B03',vendor:'AWS (Amazon Web Services)',invno:'AWS-88231',amt:6531.42},{id:'B04',vendor:'Atlassian',invno:'AT-99120',amt:987.00},{id:'B08',vendor:'Deloitte LLP',invno:'DL-77452',amt:2730.00}];
+    const started=!!s.apPayStarted,conf=s.apPayConf||0,payDone=started&&conf>=PAYRUN.length;
+    const payRows=PAYRUN.map((p,i)=>({vendor:p.vendor,invno:p.invno,amt:D.fmt2(p.amt,'CAD'),
+      status:!started?'Approved · ready to pay':(i<conf?'✓ Paid — bank confirmed 16:4'+i:'Sent to bank — awaiting confirmation…'),
+      stColor:!started?'#5B6472':(i<conf?'#1E7A46':'#C77F0A'),
+      anim:started&&i===conf?'dvpulse 1.2s infinite':'none',
+      bg:started&&i<conf?'rgba(30,122,70,.04)':'#fff'}));
     const importRows=[{vendor:'WeWork Denver',desc:'August workspace',coding:'6100 Rent · G&A · from column D',amt:'2,340.00 CAD',conf:97},{vendor:'Gusto',desc:'Payroll service fee',coding:'6200 Software · G&A',amt:'189.00 CAD',conf:96},{vendor:'Maple Systems',desc:'Project allocation — Meridian 60% / Core 40%',coding:'5100 split by project columns',amt:'4,120.00 CAD',conf:91},{vendor:'Uber for Business',desc:'Team travel (12 rides)',coding:'6500 Travel · Sales',amt:'418.55 CAD',conf:94},{vendor:'Staples Business',desc:'Office chairs ×2',coding:'6700 Office Supplies · G&A',amt:'642.10 CAD',conf:95},{vendor:'Notion Labs',desc:'Annual plan',coding:'6200 Software · prepaid split over 12 mo',amt:'1,608.00 CAD',conf:88}];
     const scanRows=[{vendor:'Bell Canada',desc:'Scanned: invoice #1263 (photo)',coding:'6400 Telephone · G&A · GST extracted',amt:'1,304.10 CAD',conf:97},{vendor:'Petro-Canada',desc:'Scanned: fuel receipt',coding:'6500 Travel · Operations',amt:'86.40 CAD',conf:93},{vendor:'Tim Hortons',desc:'Scanned: team breakfast receipt',coding:'6700 Office · meals 50% deductible flag',amt:'42.75 CAD',conf:90}];
     return {isAP:true,
@@ -1718,6 +1793,13 @@ class Component extends DCLogic {
       apTabs:[['all','All ('+D.AP_QUEUE.length+')'],['auto','Auto-posted (8)'],['review','In review (3)'],['escalated','Escalated (1)']].map(t=>({label:t[1],go:()=>this.setState({apTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'})),
       apRows:rows,apAging0:'31.2k',apAging30:'4.4k',apAging60:'0',
       apGoTB:e=>{e.preventDefault();this.setState({screen:'tb'})},
+      apPayOpen:!!s.apPayOpen,apPayToggle:()=>this.setState({apPayOpen:!s.apPayOpen}),
+      apPayCount:PAYRUN.length,apPayRows:payRows,apPayTotal:D.fmt2(PAYRUN.reduce((a,p)=>a+p.amt,0),'CAD'),
+      apPayIdle:!started,apPayDone:payDone,
+      apPayGo:()=>{this.setState({apPayStarted:true,apPayConf:0});this.say('Run released — payments sent to RBC ····4417');
+        clearTimeout(this._payT);const step=n=>{this._payT=setTimeout(()=>{this.setState({apPayConf:n});
+          if(n<PAYRUN.length)step(n+1);
+          else {this.setState({apPaid:[...(this.state.apPaid||[]),...PAYRUN.map(p=>p.id)]});this.say('All 4 payments bank-confirmed — bills marked Paid, receipts written')}},1000)};step(1)},
       apImportOpen:()=>this.setState({apModal:'import',apParsed:false}),
       apScanOpen:()=>this.setState({apModal:'scan',apParsed:false}),
       apModal:!!s.apModal,apModalClose:()=>this.setState({apModal:null}),
@@ -1730,11 +1812,39 @@ class Component extends DCLogic {
       apModalPost:()=>{this.setState({apModal:null});this.say((s.apModal==='scan'?3:6)+' bills posted to your review queue — nothing hits the ledger until you approve')}};
   }
   vals_ar(){
-    const s=this.state,D=this.D;if(!D||s.screen!=='ar')return {isAR:s.screen==='ar',arRows:[],arDrafts:[]};
+    const s=this.state,D=this.D;if(!D||s.screen!=='ar')return {isAR:!!D&&s.screen==='ar',arRows:[],arDrafts:[]};
+    // new-invoice flow — pre-filled from the contract schedule per customer
+    const SCHED={
+      'Meridian Foods Group':{amt:32760,acct:'4000',type:'Platform Subscriptions',n:7,why:'Contract schedule: 32,760/mo — matches the last 7 invoices (MSA signed 14 Jan 2026)'},
+      'TrueNorth Mining Ltd':{amt:28430,acct:'4000',type:'Platform Subscriptions',n:6,why:'Contract schedule: 28,430/mo — matches the last 6 invoices'},
+      'Lakeside Pulp & Paper':{amt:19980,acct:'4000',type:'Platform Subscriptions',n:9,why:'Contract schedule: 19,980/mo — matches the last 9 invoices'},
+      'Harbourline Logistics':{amt:24150,acct:'4000',type:'Platform Subscriptions',n:4,why:'Contract schedule: 24,150/mo — matches the last 4 invoices'},
+      'Prairie AgCo':{amt:8890,acct:'4100',type:'Professional Services',n:3,why:'Statement of work: monthly advisory — matches the last 3 invoices'}};
+    const cust=s.arCust||'Meridian Foods Group',sc=SCHED[cust];
+    const created=s.arCreated||[];
+    const newNo='INV-202608-'+(104+created.length);
+    const tax=Math.round(sc.amt*.05*100)/100,gross=Math.round((sc.amt+tax)*100)/100;
+    const allRows=[...created,...D.AR_ROWS];
     return {isAR:true,arAging:'Current 85.3k · 1–30 20.0k · 31–60 8.9k',
-      arRows:D.AR_ROWS.map(a=>({cust:a.cust,inv:a.inv,due:a.due.slice(5),amt:D.fmt(a.amt,'CAD'),age:a.age,
+      arNew:!!s.arNew,arNewToggle:()=>this.setState({arNew:!s.arNew}),
+      arCust:cust,arSetCust:e=>this.setState({arCust:e.target.value}),
+      arCustOpts:Object.keys(SCHED),
+      arNewNo:newNo,arNewAmt:D.fmt2(sc.amt,'CAD'),
+      arSuggest:[
+        {label:sc.acct+' '+sc.type,conf:98,why:'Revenue account from the contract type'},
+        {label:'GST 5%',conf:99,why:'Tax jurisdiction: Ontario, Canada'},
+        {label:'Terms: Net 30',conf:97,why:'Standard terms on this customer’s MSA'}],
+      arSuggestWhy:sc.why,
+      arNewLines:[
+        {acct:'1100',name:'Accounts Receivable',dr:D.fmt2(gross),cr:''},
+        {acct:sc.acct,name:D.acctName(sc.acct),dr:'',cr:D.fmt2(sc.amt)},
+        {acct:'2100',name:'Sales Tax Payable',dr:'',cr:D.fmt2(tax)}],
+      arSave:()=>{
+        this.setState({arNew:false,arCreated:[...created,{cust,inv:newNo,date:'2026-07-29',due:'2026-08-28',amt:sc.amt,status:'Sent ✓',age:'Current',fresh:true}]});
+        this.say('Invoice '+newNo+' approved & sent to '+cust+' — journal posted, receipt written')},
+      arRows:allRows.map(a=>({cust:a.cust,inv:a.inv,due:a.due.slice(5),amt:D.fmt(a.amt,'CAD'),age:a.age,
         ageColor:a.age==='Current'||a.age==='—'?'#5B6472':(a.age==='1–30'?'#C77F0A':'#C0392B'),
-        status:a.status,stColor:a.status==='Paid'?'#1E7A46':(a.status.includes('Over')?'#C0392B':(a.status.includes('Partial')?'#C77F0A':'#5B6472')),
+        status:a.status,stColor:a.status==='Paid'?'#1E7A46':(a.status.includes('Over')?'#C0392B':(a.status.includes('Partial')?'#C77F0A':(a.status.includes('Sent')?'#1F4E79':'#5B6472'))),
         matched:a.status==='Paid'||a.status==='Partially paid'})),
       arGoBank:e=>{e.preventDefault();this.setState({screen:'banking'})},
       arDrafts:D.COLLECTION_DRAFTS.filter(d=>!(s.arSent||[]).includes(d.inv)).map(d=>({...d,send:()=>{this.setState({arSent:[...(s.arSent||[]),d.inv]});this.say('Reminder sent to '+d.cust+' — logged to audit trail')}}))};
