@@ -237,7 +237,8 @@ input{font-family:Inter,system-ui,sans-serif}
             <button onClick="{{ apImportOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">⇪ Batch / Excel import</button>
             <button onClick="{{ apScanOpen }}" style="border:1px solid #d7dfec;background:#fff;color:#1F4E79;border-radius:8px;font-size:12px;font-weight:600;padding:8px 14px;cursor:pointer">▣ Scan invoices</button>
             <button onClick="{{ apPayToggle }}" style="border:1px solid rgba(30,122,70,.4);background:rgba(30,122,70,.06);color:#1E7A46;border-radius:8px;font-size:12px;font-weight:700;padding:8px 14px;cursor:pointer">⇢ Payment run ({{ apPayCount }})</button>
-            <div style="margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#5B6472">
+            <div style="margin-left:auto;display:flex;gap:14px;font-size:11.5px;color:#5B6472;align-items:center">
+              <sc-if value="{{ apEntNote }}" hint-placeholder-val="{{ false }}"><span style="background:rgba(199,127,10,.08);border:1px solid rgba(199,127,10,.35);color:#7a4e06;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:600">{{ apEntNote }}</span></sc-if>
               <span>Aging: <b style="color:#12284B">Current {{ apAging0 }}</b> · 1–30 {{ apAging30 }} · 31+ <b style="color:#C0392B">{{ apAging60 }}</b></span>
             </div>
           </div>
@@ -260,7 +261,7 @@ input{font-family:Inter,system-ui,sans-serif}
               <sc-if value="{{ apDup }}" hint-placeholder-val="{{ false }}">
                 <div style="background:rgba(199,127,10,.08);border:1px solid rgba(199,127,10,.4);border-radius:9px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;color:#7a4e06;display:flex;gap:10px;align-items:center;animation:dvfade .2s ease">
                   <span style="font-size:16px">👋</span>
-                  <span style="flex:1"><b>Heads up</b> — invoice #1245 was already recorded for Bell Canada on 12 Jun. Want to open it?</span>
+                  <span style="flex:1"><b>Heads up</b> — invoice #{{ apDupNo }} was already recorded for {{ apDupVendor }} on {{ apDupDate }}. Want to open it?</span>
                   <button onClick="{{ apOpenDup }}" style="border:1px solid #C77F0A;background:#fff;color:#C77F0A;border-radius:7px;font-size:11.5px;font-weight:700;padding:5px 12px;cursor:pointer">Open it</button>
                 </div>
               </sc-if>
@@ -411,7 +412,7 @@ input{font-family:Inter,system-ui,sans-serif}
             </div>
           </sc-if>
           <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
-            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:9px"><b style="font-size:13px;color:#12284B">Customer invoices</b><button onClick="{{ arNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:7px;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer">+ New invoice</button><span style="margin-left:auto;font-size:11px;color:#5B6472">Aging: {{ arAging }}</span></div>
+            <div style="padding:12px 16px;border-bottom:1px solid #e3e9f2;display:flex;align-items:center;gap:9px"><b style="font-size:13px;color:#12284B">Customer invoices</b><button onClick="{{ arNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:7px;font-size:11px;font-weight:700;padding:5px 11px;cursor:pointer">+ New invoice</button><sc-if value="{{ arEntNote }}" hint-placeholder-val="{{ false }}"><span style="background:rgba(199,127,10,.08);border:1px solid rgba(199,127,10,.35);color:#7a4e06;border-radius:6px;padding:3px 9px;font-size:10.5px;font-weight:600">{{ arEntNote }}</span></sc-if><span style="margin-left:auto;font-size:11px;color:#5B6472">Aging: {{ arAging }}</span></div>
             <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:7px 16px;background:#F4F7FC;font-size:10.5px;font-weight:700;color:#5B6472;text-transform:uppercase;letter-spacing:.3px"><span>Customer / invoice</span><span style="text-align:right">Amount</span><span>Age</span><span>Status</span><span></span></div>
             <sc-for list="{{ arRows }}" as="a" hint-placeholder-count="6">
               <div style="display:grid;grid-template-columns:1fr 110px 80px 90px 90px;padding:8px 16px;border-bottom:1px solid #f2f5fa;font-size:12px;align-items:center">
@@ -1580,7 +1581,10 @@ class Component extends DCLogic {
     const icons={ap:'▥',ar:'▤'};
     const titles={dashboard:'Home',gl:'Transactions / General Ledger',tb:'Trial Balance',fin:'Financial Statements',ap:'Bills — Accounts Payable',ar:'Invoices — Accounts Receivable',banking:'Banking & Reconciliation',reports:'Reports & Excel Bridge',controls:'Controls & Audit',agents:'Agent Activity',entities:'Entities & Consolidation',settings:'Agent Persona Settings'};
     return {
-      navItems:nav.map(n=>({label:n[2],icon:icons[n[0]]||n[1],go:this.go(n[0]),bg:s.screen===n[0]?'rgba(45,212,191,.16)':'transparent',fg:s.screen===n[0]?'#2DD4BF':'#c6d2e4',fw:s.screen===n[0]?'700':'500',badge:n[0]==='agents'?'8':null})),
+      navItems:nav.map(n=>{
+        let badge=null;
+        if(n[0]==='agents'&&D){const a=D.AP_QUEUE.filter(b=>['review','escalated'].includes(b.status)&&!(s.apDone||[]).includes(b.id)).length,r=D.COLLECTION_DRAFTS.filter(d2=>!(s.arSent||[]).includes(d2.inv)).length,m=['R2','R4'].filter(id=>!(s.bankDone||[]).includes(id)).length;badge=(a+r+m)||null}
+        return {label:n[2],icon:icons[n[0]]||n[1],go:this.go(n[0]),bg:s.screen===n[0]?'rgba(45,212,191,.16)':'transparent',fg:s.screen===n[0]?'#2DD4BF':'#c6d2e4',fw:s.screen===n[0]?'700':'500',badge}}),
       screenTitle:titles[s.screen]||'Dovetail AI',
       entity:s.entity,setEntity:e=>this.setState({entity:e.target.value}),
       entityOpts:D?D.ENTITIES.map(e=>({id:e.id,label:e.name+' · '+e.cur})):[{id:'CA',label:'Algo8 Canada · CAD'}],
@@ -1639,10 +1643,15 @@ class Component extends DCLogic {
     const agents=D.AGENTS.slice(0,4).map(a=>({icon:a.icon,name:a.name,sub:a.today}));
     const P=s.persona,V={};
     if(P==='Controller'){V.greet='Good morning, Sam — close is on track.';V.sub='Day 2 of 4 · July 2026 close · Algo8 '+(ent==='GROUP'?'Group':D.ENTITIES.find(e=>e.id===ent).name.replace('Algo8 ',''));
+      const apOpen=D.AP_QUEUE.filter(b=>['review','escalated'].includes(b.status)&&!(s.apDone||[]).includes(b.id)).length;
+      const remOpen=D.COLLECTION_DRAFTS.filter(d2=>!(s.arSent||[]).includes(d2.inv)).length;
+      const matchOpen=['R2','R4'].filter(id=>!(s.bankDone||[]).includes(id)).length;
+      const ctlEx=(s.apDone||[]).includes('B09')?0:1;
+      const recEx=['R1','R3'].filter(id=>!(s.bankDone||[]).includes(id)).length;
       V.tiles=[{label:'Close status',value:'Day 2 of 4',sub:'On track · 62% of checklist done',accent:'#2DD4BF',go:this.go('agents')},
         {label:'Reconciliations automated',value:'93%',sub:'89 of 96 bank lines matched',accent:'#1F4E79',go:this.go('banking')},
-        {label:'Awaiting my review',value:'8',sub:'4 bills · 2 reminders · 2 matches',accent:'#C77F0A',go:this.go('agents')},
-        {label:'Open exceptions',value:'3',sub:'1 control · 2 reconciliation',accent:'#C0392B',go:this.go('controls')}];
+        {label:'Awaiting my review',value:String(apOpen+remOpen+matchOpen),sub:apOpen+' bills · '+remOpen+' reminders · '+matchOpen+' matches',accent:'#C77F0A',go:this.go('agents')},
+        {label:'Open exceptions',value:String(ctlEx+recEx),sub:ctlEx+' control · '+recEx+' reconciliation',accent:ctlEx+recEx?'#C0392B':'#1E7A46',go:this.go('controls')}];
       V.leftTitle='Needs your decision';V.left=[
         {title:'Bill MS-1188 — Maple Systems',sub:'Hours 22% above June. 3-way match: price variance.',val:this.fm(7770),valColor:'#C77F0A',ai:true,conf:'88%',bg:'#fff',go:this.go('ap')},
         {title:'Bill DF-0042 — Delta Freight',sub:'No PO, unclear coding. The AP Agent has a question for you.',val:this.fm(3980),valColor:'#C0392B',ai:true,conf:'64%',bg:'#fff',go:this.go('ap')},
@@ -1709,7 +1718,7 @@ class Component extends DCLogic {
     const setF=k=>e=>this.setState({glF:{...F,[k]:e.target.value}});
     const mkOpts=(label,arr)=>[{v:'all',t:label+': All'},...arr.map(a=>({v:a.v||a,t:a.t||a}))];
     // manual JE — posts into the live demo ledger (flows to TB & statements)
-    const jeAmt=Math.round((parseFloat(String(s.glAmt||'').replace(/,/g,''))||0)*100)/100;
+    const jeAmt=Math.round((parseFloat(String(s.glAmt||'').replace(/[^0-9.]/g,''))||0)*100)/100;
     const jeDr=s.glDr||'6700',jeCr=s.glCr||'1000';
     const jeVals={glNew:!!s.glNew,glNewToggle:()=>this.setState({glNew:!s.glNew}),
       glDesc:s.glDesc||'',glSetDesc:e=>this.setState({glDesc:e.target.value}),
@@ -1807,8 +1816,10 @@ class Component extends DCLogic {
   vals_ap(){
     const s=this.state,D=this.D;if(!D||s.screen!=='ap')return {isAP:s.screen==='ap',apRows:[],apTabs:[],apModal:!1};
     const q=s.apQ||{},tab=s.apTab||'all';
-    const isDup=(s.apVendor==='Bell Canada')&&(s.apInvNo||'').trim()==='1245';
     const vend=s.apVendor||'Bell Canada';
+    const invTyped=(s.apInvNo||'').trim();
+    const dupHit=invTyped?[...D.AP_QUEUE,...(s.apCustom||[])].find(b=>b.vendor===vend&&String(b.invno)===invTyped):null;
+    const isDup=!!dupHit;
     const vinfo={'Bell Canada':['6400 Telephone','G&A','GST 5%','Matches 14 prior bills from this vendor',97],'AWS (Amazon Web Services)':['5000 Cloud Hosting','Engineering','GST 5%','Usage invoice pattern, 24 prior bills',96],'Deloitte LLP':['6300 Professional Fees','G&A','GST 5%','Retainer per engagement letter',95],'Northgate Properties':['6100 Rent','G&A','GST 5%','Fixed monthly lease',99],'Staples Business':['6700 Office Supplies','G&A','GST 5%','Usual vendor pattern',96],'Harbour Print Co.':['6800 Marketing','Sales','GST 5%','New vendor — inferred from line items',84]}[vend]||['6700 Office Supplies','G&A','GST 5%','Best guess — please check',78];
     const bills=[...(s.apCustom||[]).slice().reverse(),...D.AP_QUEUE].filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
     const paidRun=s.apPaid||[];
@@ -1835,18 +1846,21 @@ class Component extends DCLogic {
       apVendorOpts:['Bell Canada','AWS (Amazon Web Services)','Deloitte LLP','Northgate Properties','Staples Business','Harbour Print Co.'],
       apInvNo:s.apInvNo||'',apSetInvNo:e=>this.setState({apInvNo:e.target.value}),
       apInvBorder:isDup?'#C77F0A':'#d7dfec',apDup:isDup,
-      apOpenDup:()=>{const t=this.ledger.find(x=>x.invno==='1245'&&x.entity==='CA');if(t)this.openTxn(t)},
+      apDupNo:dupHit?dupHit.invno:'',apDupVendor:dupHit?dupHit.vendor:'',apDupDate:dupHit?dupHit.date:'',
+      apOpenDup:()=>{const t=this.ledger.find(x=>String(x.invno)===invTyped&&x.vendor===vend);if(t)this.openTxn(t);else this.say('It’s in the queue below — scroll down')},
       apAmt:s.apAmt||'',apSetAmt:e=>this.setState({apAmt:e.target.value}),
       apSuggest:[{label:vinfo[0],conf:vinfo[4],why:vinfo[3]},{label:vinfo[1],conf:Math.max(vinfo[4]-3,70),why:'Department inferred from vendor history'},{label:vinfo[2],conf:99,why:'Tax jurisdiction: Ontario, Canada'}],
       apSuggestWhy:'✦ '+vinfo[3],
       apSave:()=>{
-        const amt=Math.round((parseFloat(String(s.apAmt||'').replace(/,/g,''))||100)*100)/100;
+        const amt=Math.round((parseFloat(String(s.apAmt||'').replace(/[^0-9.]/g,''))||0)*100)/100;
+        if(amt<=0){this.say('Add an amount first — any number works, it’s demo data');return}
         const nb={id:'BX'+(((s.apCustom||[]).length)+1),vendor:vend,invno:(s.apInvNo||'—'),date:'2026-07-29',amt,cur:'CAD',
           acct:vinfo[0].split(' ')[0],dept:vinfo[1],conf:vinfo[4],status:vinfo[4]>=95?'auto':'review',
           reason:'Entered by you just now — '+vinfo[3],note:isDup?null:undefined};
         this.setState({apCustom:[...(s.apCustom||[]),nb],apNew:false,apInvNo:'',apAmt:''});
         this.say(isDup?'Saved anyway — flagged for Controller review (possible duplicate)':'Bill saved — it’s now in the queue below at '+vinfo[4]+'% confidence')},
       apTabs:[['all','All ('+D.AP_QUEUE.length+')'],['auto','Auto-posted (8)'],['review','In review (3)'],['escalated','Escalated (1)']].map(t=>({label:t[1],go:()=>this.setState({apTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'})),
+      apEntNote:(s.entity==='IN'||s.entity==='US')?'Sub-ledger demo data is Algo8 Canada (CAD) — entity switching applies to GL, TB & statements':null,
       apRows:rows,apAging0:'31.2k',apAging30:'4.4k',apAging60:'0',
       apGoTB:e=>{e.preventDefault();this.setState({screen:'tb'})},
       apPayOpen:!!s.apPayOpen,apPayToggle:()=>this.setState({apPayOpen:!s.apPayOpen}),
@@ -1882,6 +1896,7 @@ class Component extends DCLogic {
     const tax=Math.round(sc.amt*.05*100)/100,gross=Math.round((sc.amt+tax)*100)/100;
     const allRows=[...created,...D.AR_ROWS];
     return {isAR:true,arAging:'Current 85.3k · 1–30 20.0k · 31–60 8.9k',
+      arEntNote:(s.entity==='IN'||s.entity==='US')?'Sub-ledger demo data is Algo8 Canada (CAD)':null,
       arNew:!!s.arNew,arNewToggle:()=>this.setState({arNew:!s.arNew}),
       arCust:cust,arSetCust:e=>this.setState({arCust:e.target.value}),
       arCustOpts:Object.keys(SCHED),
@@ -1962,6 +1977,8 @@ class Component extends DCLogic {
       const why=(m)=>{
         if(m.a.n==='6400'&&(ent==='CA'||ent==='GROUP'))return 'One-time CAD 620 charge from Bell Canada for a new phone system (invoice #1245, dated 12 Jun, posted 3 Jul) explains 94% of this change. The rest is a 3% rate increase effective April. Without the one-time item, telephone would be roughly flat.';
         if(m.a.n==='5100')return 'Contractor hours on the Meridian Deploy project ran 22% above June (bill MS-1188). Project timing — the plan catches up in August, so expect this to reverse.';
+        if(m.a.n==='5200')return 'New this month — equipment purchased for resale on the TrueNorth drop-ship order (TechSource TS-44121), matched to resale invoice INV-202607-EQ1. No inventory held: resale gear is expensed on shipment.';
+        if(m.a.n==='4200')return 'First equipment resale of the period — edge gateways drop-shipped to TrueNorth under the Plant OS Rollout order. 20% margin over the matched cost in 5200.';
         if(m.pc>0)return 'Driven by '+(m.d>500?'a higher':'a slightly higher')+' bill from the usual vendor this period — no new vendors, no unusual entries. Within normal monthly variation.';
         return 'Lower activity this period — fewer transactions hit this account. No missing bills detected (all recurring vendors accounted for).'};
       out.chRows=moves.map(m=>({name:m.a.n+' · '+m.a.name,from:this.fm(Math.round(m.from)),to:this.fm(Math.round(m.to)),
