@@ -127,6 +127,7 @@ input{font-family:Inter,system-ui,sans-serif}
       <sc-if value="{{ isGL }}" hint-placeholder-val="{{ false }}">
         <div style="animation:dvfade .25s ease">
           <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            <button onClick="{{ glNewToggle }}" style="border:none;background:#12284B;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:7px 13px;cursor:pointer">+ Journal entry</button>
             <sc-for list="{{ glFilters }}" as="f" hint-placeholder-count="5">
               <select value="{{ f.value }}" onChange="{{ f.set }}" style="height:30px;border:1px solid #d7dfec;border-radius:7px;background:#fff;font-size:11.5px;padding:0 7px;color:#222;cursor:pointer">
                 <sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
@@ -134,6 +135,34 @@ input{font-family:Inter,system-ui,sans-serif}
             </sc-for>
             <span style="font-size:11.5px;color:#5B6472;margin-left:auto">{{ glCount }} transactions · July 2026 · click any row for both sides of the entry <span title="Every transaction has a debit and a credit — double-entry bookkeeping. Click to see both." style="cursor:help;color:#1F4E79">?</span></span>
           </div>
+          <!-- manual journal entry -->
+          <sc-if value="{{ glNew }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#fff;border:1px solid #e3e9f2;border-radius:12px;padding:16px 18px;margin-bottom:14px;animation:dvfade .2s ease">
+              <div style="font-size:13.5px;font-weight:700;color:#12284B;margin-bottom:3px">Manual journal entry — try a dummy one, you can’t break anything</div>
+              <div style="font-size:11px;color:#5B6472;margin-bottom:12px">It posts to the real demo ledger: you’ll see it in this list, the trial balance, and the statements. Manual JEs are flagged for dual review (policy P-5). Demo data resets on refresh.</div>
+              <div style="display:grid;grid-template-columns:1.6fr 1fr;gap:10px;margin-bottom:10px">
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Description
+                  <input value="{{ glDesc }}" onChange="{{ glSetDesc }}" placeholder="e.g. Team offsite supplies — test entry" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;outline:none"></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Amount (CAD)
+                  <input value="{{ glAmt }}" onChange="{{ glSetAmt }}" placeholder="0.00" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;font-size:12.5px;padding:0 10px;margin-top:4px;text-align:right;outline:none"></label>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Debit account
+                  <select value="{{ glDr }}" onChange="{{ glSetDr }}" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;background:#fff;font-size:12.5px;padding:0 8px;margin-top:4px">
+                    <sc-for list="{{ glAcctOpts }}" as="ga" hint-placeholder-count="10"><option value="{{ ga.v }}">{{ ga.t }}</option></sc-for>
+                  </select></label>
+                <label style="font-size:11px;color:#5B6472;font-weight:600">Credit account
+                  <select value="{{ glCr }}" onChange="{{ glSetCr }}" style="width:100%;height:34px;border:1px solid #d7dfec;border-radius:8px;background:#fff;font-size:12.5px;padding:0 8px;margin-top:4px">
+                    <sc-for list="{{ glAcctOpts }}" as="gb" hint-placeholder-count="10"><option value="{{ gb.v }}">{{ gb.t }}</option></sc-for>
+                  </select></label>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <span style="font-size:11.5px;color:#12284B;background:#F4F7FC;border:1px solid #e3e9f2;border-radius:7px;padding:6px 11px;font-variant-numeric:tabular-nums">DR {{ glPrevDr }} · CR {{ glPrevCr }} — {{ glPrevAmt }} each side · balanced ✓</span>
+                <button onClick="{{ glSave }}" style="border:none;background:#1E7A46;color:#fff;border-radius:8px;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer">✓ Post journal entry</button>
+                <button onClick="{{ glNewToggle }}" style="border:1px solid #d7dfec;background:#fff;color:#222;border-radius:8px;font-size:12px;padding:8px 13px;cursor:pointer">Cancel</button>
+              </div>
+            </div>
+          </sc-if>
           <div style="background:#fff;border:1px solid #e3e9f2;border-radius:11px;overflow:hidden">
             <div style="display:grid;grid-template-columns:82px 1fr 130px 110px 90px 110px;padding:8px 14px;background:#12284B;color:#fff;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px">
               <span>Date</span><span>Description</span><span>Project</span><span>Department</span><span>Source</span><span style="text-align:right">Amount</span>
@@ -1679,7 +1708,28 @@ class Component extends DCLogic {
     if(F.src!=='all')rows=rows.filter(t=>t.src===F.src);
     const setF=k=>e=>this.setState({glF:{...F,[k]:e.target.value}});
     const mkOpts=(label,arr)=>[{v:'all',t:label+': All'},...arr.map(a=>({v:a.v||a,t:a.t||a}))];
-    return {isGL:true,glCount:rows.length,
+    // manual JE — posts into the live demo ledger (flows to TB & statements)
+    const jeAmt=Math.round((parseFloat(String(s.glAmt||'').replace(/,/g,''))||0)*100)/100;
+    const jeDr=s.glDr||'6700',jeCr=s.glCr||'1000';
+    const jeVals={glNew:!!s.glNew,glNewToggle:()=>this.setState({glNew:!s.glNew}),
+      glDesc:s.glDesc||'',glSetDesc:e=>this.setState({glDesc:e.target.value}),
+      glAmt:s.glAmt||'',glSetAmt:e=>this.setState({glAmt:e.target.value}),
+      glDr:jeDr,glSetDr:e=>this.setState({glDr:e.target.value}),
+      glCr:jeCr,glSetCr:e=>this.setState({glCr:e.target.value}),
+      glAcctOpts:D.COA.map(a=>({v:a.n,t:a.n+' · '+a.name})),
+      glPrevDr:jeDr+' '+D.acctName(jeDr),glPrevCr:jeCr+' '+D.acctName(jeCr),
+      glPrevAmt:jeAmt?D.fmt2(jeAmt,'CAD'):'—',
+      glSave:()=>{
+        if(!jeAmt){this.say('Give it an amount first — any number works, it’s demo data');return}
+        const je={id:'TJE'+(((s.glJeN||0))+1),date:'2026-07-29',period:'2026-07',entity:ent==='GROUP'?'CA':ent,src:'JE',
+          desc:(s.glDesc||'Manual journal entry')+' (entered by you)',ai:false,conf:null,dept:'—',proj:'—',
+          lines:[{acct:jeDr,dr:jeAmt},{acct:jeCr,cr:jeAmt}],
+          rationale:'Manual entry — queued for dual review per policy P-5.'};
+        this.ledger.push(je);
+        this.setState({glNew:false,glDesc:'',glAmt:'',glJeN:(s.glJeN||0)+1});
+        this.say('Journal posted to '+(ent==='GROUP'?'Algo8 Canada':'this entity')+' — check the trial balance: it moved')},
+    };
+    return {isGL:true,...jeVals,glCount:rows.length,
       glFilters:[
         {value:F.acct,set:setF('acct'),opts:mkOpts('Account',D.COA.map(a=>({v:a.n,t:a.n+' '+a.name})))},
         {value:F.proj,set:setF('proj'),opts:mkOpts('Project',['Plant OS Rollout','Meridian Deploy','Core Platform'])},
@@ -1760,7 +1810,7 @@ class Component extends DCLogic {
     const isDup=(s.apVendor==='Bell Canada')&&(s.apInvNo||'').trim()==='1245';
     const vend=s.apVendor||'Bell Canada';
     const vinfo={'Bell Canada':['6400 Telephone','G&A','GST 5%','Matches 14 prior bills from this vendor',97],'AWS (Amazon Web Services)':['5000 Cloud Hosting','Engineering','GST 5%','Usage invoice pattern, 24 prior bills',96],'Deloitte LLP':['6300 Professional Fees','G&A','GST 5%','Retainer per engagement letter',95],'Northgate Properties':['6100 Rent','G&A','GST 5%','Fixed monthly lease',99],'Staples Business':['6700 Office Supplies','G&A','GST 5%','Usual vendor pattern',96],'Harbour Print Co.':['6800 Marketing','Sales','GST 5%','New vendor — inferred from line items',84]}[vend]||['6700 Office Supplies','G&A','GST 5%','Best guess — please check',78];
-    const bills=D.AP_QUEUE.filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
+    const bills=[...(s.apCustom||[]).slice().reverse(),...D.AP_QUEUE].filter(b=>tab==='all'||b.status===tab).filter(b=>!(s.apDone||[]).includes(b.id));
     const paidRun=s.apPaid||[];
     const rows=bills.map(b=>({vendor:b.vendor,invno:b.invno,conf:b.conf,amt:D.fmt2(b.amt,'CAD'),note:b.note?'Approved via WhatsApp':null,noteGo:()=>this.waStart(),
       line2:(b.acct?b.acct+' '+D.acctName(b.acct):'⚠ Account: your call')+' · '+(b.dept||'—')+' · '+b.date+' — ✦ '+b.reason,
@@ -1789,7 +1839,13 @@ class Component extends DCLogic {
       apAmt:s.apAmt||'',apSetAmt:e=>this.setState({apAmt:e.target.value}),
       apSuggest:[{label:vinfo[0],conf:vinfo[4],why:vinfo[3]},{label:vinfo[1],conf:Math.max(vinfo[4]-3,70),why:'Department inferred from vendor history'},{label:vinfo[2],conf:99,why:'Tax jurisdiction: Ontario, Canada'}],
       apSuggestWhy:'✦ '+vinfo[3],
-      apSave:()=>{this.say(isDup?'Saved anyway — flagged for Controller review (possible duplicate)':'Bill saved — queued at '+vinfo[4]+'% confidence');this.setState({apNew:false,apInvNo:'',apAmt:''})},
+      apSave:()=>{
+        const amt=Math.round((parseFloat(String(s.apAmt||'').replace(/,/g,''))||100)*100)/100;
+        const nb={id:'BX'+(((s.apCustom||[]).length)+1),vendor:vend,invno:(s.apInvNo||'—'),date:'2026-07-29',amt,cur:'CAD',
+          acct:vinfo[0].split(' ')[0],dept:vinfo[1],conf:vinfo[4],status:vinfo[4]>=95?'auto':'review',
+          reason:'Entered by you just now — '+vinfo[3],note:isDup?null:undefined};
+        this.setState({apCustom:[...(s.apCustom||[]),nb],apNew:false,apInvNo:'',apAmt:''});
+        this.say(isDup?'Saved anyway — flagged for Controller review (possible duplicate)':'Bill saved — it’s now in the queue below at '+vinfo[4]+'% confidence')},
       apTabs:[['all','All ('+D.AP_QUEUE.length+')'],['auto','Auto-posted (8)'],['review','In review (3)'],['escalated','Escalated (1)']].map(t=>({label:t[1],go:()=>this.setState({apTab:t[0]}),bg:tab===t[0]?'#12284B':'#fff',fg:tab===t[0]?'#fff':'#1F4E79',bd:tab===t[0]?'#12284B':'#d7dfec'})),
       apRows:rows,apAging0:'31.2k',apAging30:'4.4k',apAging60:'0',
       apGoTB:e=>{e.preventDefault();this.setState({screen:'tb'})},
