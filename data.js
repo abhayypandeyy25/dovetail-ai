@@ -11,8 +11,8 @@ export const COA=[
  ['1100','Accounts Receivable','A'],['1200','Prepaid Expenses','A'],['1500','Computer Equipment','A'],['1600','Accumulated Depreciation','A'],
  ['2000','Accounts Payable','L'],['2100','Sales Tax Payable','L'],['2200','Payroll Liabilities','L'],['2500','Term Loan','L'],
  ['3000','Share Capital','Q'],['3900','Retained Earnings','Q'],
- ['4000','Platform Subscriptions','R'],['4100','Professional Services','R'],
- ['5000','Cloud Hosting (COGS)','C'],['5100','Implementation Labour (COGS)','C'],
+ ['4000','Platform Subscriptions','R'],['4100','Professional Services','R'],['4200','Equipment Resale','R'],
+ ['5000','Cloud Hosting (COGS)','C'],['5100','Implementation Labour (COGS)','C'],['5200','Equipment Cost of Sales','C'],
  ['6000','Salaries & Benefits','X'],['6100','Rent','X'],['6200','Software & Tools','X'],['6300','Professional Fees','X'],
  ['6400','Telephone','X'],['6500','Travel','X'],['6600','Insurance','X'],['6700','Office Supplies','X'],['6800','Marketing & Printing','X'],['6900','Depreciation','X'],['6950','Bank Charges','X']
 ].map(a=>({n:a[0],name:a[1],t:a[2]}));
@@ -73,7 +73,10 @@ const PIN_CA={
  '2026-06':[{date:'2026-06-05',period:'2026-06',entity:'CA',src:'AP',desc:'Monthly telecom services — Bell Canada',vendor:'Bell Canada',invno:'1231',ai:true,agent:'AP Agent',conf:98,dept:'G&A',proj:'—',tax:'GST 5%',lines:[{acct:'6400',dr:1238},{acct:'2100',dr:61.9},{acct:'2000',cr:1299.9}],rationale:'Matches prior monthly telecom bills; +2.7% rate increase effective Apr 2026.'}],
  '2026-07':[
   {date:'2026-07-05',period:'2026-07',entity:'CA',src:'AP',desc:'Monthly telecom services — Bell Canada',vendor:'Bell Canada',invno:'1263',ai:true,agent:'AP Agent',conf:98,dept:'G&A',proj:'—',tax:'GST 5%',lines:[{acct:'6400',dr:1242},{acct:'2100',dr:62.1},{acct:'2000',cr:1304.1}],rationale:'Matches 14 prior monthly bills from Bell Canada; rate increase effective Apr 2026.'},
-  {date:'2026-07-03',period:'2026-07',entity:'CA',src:'AP',desc:'One-time charge — new phone system installation — Bell Canada',vendor:'Bell Canada',invno:'1245',docdate:'2026-06-12',ai:true,agent:'AP Agent',conf:96,dept:'G&A',proj:'—',tax:'GST 5%',lines:[{acct:'6400',dr:620},{acct:'2100',dr:31},{acct:'2000',cr:651}],rationale:'Invoice dated 12 Jun 2026, received 3 Jul — one-time installation charge, coded to Telephone per policy (below capitalization threshold).'}]};
+  {date:'2026-07-03',period:'2026-07',entity:'CA',src:'AP',desc:'One-time charge — new phone system installation — Bell Canada',vendor:'Bell Canada',invno:'1245',docdate:'2026-06-12',ai:true,agent:'AP Agent',conf:96,dept:'G&A',proj:'—',tax:'GST 5%',lines:[{acct:'6400',dr:620},{acct:'2100',dr:31},{acct:'2000',cr:651}],rationale:'Invoice dated 12 Jun 2026, received 3 Jul — one-time installation charge, coded to Telephone per policy (below capitalization threshold).'},
+  // Equipment resale pair — drop-shipped, no inventory held: cost expensed to 5200 on shipment, matched to the resale invoice.
+  {date:'2026-07-10',period:'2026-07',entity:'CA',src:'AR',desc:'Equipment resale — edge gateways (drop-shipped) — TrueNorth Mining Ltd',customer:'TrueNorth Mining Ltd',invno:'INV-202607-EQ1',ai:true,agent:'AR/Collections Agent',conf:97,proj:'Plant OS Rollout',dept:'Sales',tax:'GST 5%',lines:[{acct:'1100',dr:6678},{acct:'4200',cr:6360},{acct:'2100',cr:318}],rationale:'Hardware resale under the Plant OS Rollout order — drop-shipped from the distributor to the mine site; no inventory held.'},
+  {date:'2026-07-10',period:'2026-07',entity:'CA',src:'AP',desc:'Equipment for resale — drop-ship to TrueNorth site — TechSource Distribution',vendor:'TechSource Distribution',invno:'TS-44121',ai:true,agent:'AP Agent',conf:96,proj:'Plant OS Rollout',dept:'Sales',tax:'GST 5%',lines:[{acct:'5200',dr:5088},{acct:'2100',dr:254.40},{acct:'2000',cr:5342.40}],rationale:'Matched to resale invoice INV-202607-EQ1 — equipment purchased for resale is expensed to 5200 on shipment (no inventory on hand, per policy).'}]};
 // Openings: [acct, amount] dr positive; RE plugs.
 function opening(e,p,base){
  const sc=SCALE[e],f=p==='2025-07'?.84:1;

@@ -1489,7 +1489,7 @@ class Component extends DCLogic {
     waOpen:false,waStep:0,aiBench:false,
     drill:null,txn:null,verified:false,toast:null,ready:false};
   componentDidMount(){
-    import('./data.js').then(D=>{this.D=D;this.ledger=D.buildLedger();this.setState({ready:true})});
+    import('./data.js?v=20260729a').then(D=>{this.D=D;this.ledger=D.buildLedger();this.setState({ready:true})});
     this._kd=(e)=>{if(e.key==='Escape')this.setState({drill:null,txn:null,aiBrief:null,waOpen:false,aiBench:false,aiAgent:null})};
     window.addEventListener('keydown',this._kd);
   }
@@ -1630,12 +1630,12 @@ class Component extends DCLogic {
     const s=this.state,D=this.D;if(!D||s.screen!=='dashboard')return {isDash:!!D&&s.screen==='dashboard',dashTiles:[],dashLeft:[],dashRight:[]};
     const L=this.ledger,ent=s.entity,p='2026-07',cur=this.cur();
     const cash=D.cashByEntity(L,p),cashTot=ent==='GROUP'?cash.reduce((a,r)=>a+r.cad,0):(cash.find(r=>r.entity===ent)||{amt:0}).amt;
-    const rev=-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,ent,p),0);
+    const rev=-['4000','4100','4200'].reduce((a,n)=>a+D.glTotal(L,n,ent,p),0);
     const exp=D.COA.filter(a=>'XC'.includes(a.t)).reduce((a,c)=>a+D.glTotal(L,c.n,ent,p),0);
     const ni=rev-exp;
     const tel26=D.glTotal(L,'6400','CA','2026-07'),tel25=D.glTotal(L,'6400','CA','2025-07');
     const drillGL=(acct,label)=>()=>this.openDrill(label,D.ENTITIES.find(e=>e.id===(ent==='GROUP'?'GROUP':ent)).name+' · July 2026',D.glTxns(L,acct,ent,p),{acct});
-    const drillRev=()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===p&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100'].includes(l.acct))));
+    const drillRev=()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===p&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100','4200'].includes(l.acct))));
     const agents=D.AGENTS.slice(0,4).map(a=>({icon:a.icon,name:a.name,sub:a.today}));
     const P=s.persona,V={};
     if(P==='Controller'){V.greet='Good morning, Sam — close is on track.';V.sub='Day 2 of 4 · July 2026 close · Algo8 '+(ent==='GROUP'?'Group':D.ENTITIES.find(e=>e.id===ent).name.replace('Algo8 ',''));
@@ -1763,9 +1763,9 @@ class Component extends DCLogic {
       fw:o.total?'700':'400',bg:o.total?'#F4F7FC':'#fff',open:o.open||null,explain:o.explain||null,note:o.note||null})};
     if(tab==='pl'){
       const P='2026-07',Q='2026-06';
-      let revC=0,revP=0;['4000','4100'].forEach(a=>{revC-=g(a,P);revP-=g(a,Q)});
-      push('Revenue',revC,revP,{open:()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===P&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100'].includes(l.acct))))});
-      let cogsC=0,cogsP=0;['5000','5100'].forEach(a=>{cogsC+=g(a,P);cogsP+=g(a,Q)});
+      let revC=0,revP=0;['4000','4100','4200'].forEach(a=>{revC-=g(a,P);revP-=g(a,Q)});
+      push('Revenue',revC,revP,{open:()=>this.openDrill('Revenue — July 2026','All revenue transactions',L.filter(t=>t.period===P&&(ent==='GROUP'||t.entity===ent)&&!t.opening&&t.lines.some(l=>['4000','4100','4200'].includes(l.acct))))});
+      let cogsC=0,cogsP=0;['5000','5100','5200'].forEach(a=>{cogsC+=g(a,P);cogsP+=g(a,Q)});
       push('Cost of revenue',cogsC,cogsP,{note:ent!=='IN'&&cogsC/Math.max(cogsP,1)>1.08?'Implementation labour is 22% above June — extra Meridian Deploy contractor hours (bill MS-1188). Timing; expected to reverse in August.':null});
       push('Gross profit',revC-cogsC,revP-cogsP,{total:true});
       D.COA.filter(a=>a.t==='X').forEach(a=>{const c=g(a.n,P),q=g(a.n,Q);if(Math.abs(c)<.01&&Math.abs(q)<.01)return;
@@ -1984,7 +1984,7 @@ class Component extends DCLogic {
       const items=[['Revenue',null,-1],['5000 · Cloud Hosting','5000',1],['5100 · Implementation Labour','5100',1],['6000 · Salaries & Benefits','6000',1],['6100 · Rent','6100',1],['6400 · Telephone','6400',1],['6500 · Travel','6500',1]];
       out.buImport=()=>this.say('budget-fy2026.xlsx re-imported — 214 lines mapped automatically');
       out.buRows=items.map(it=>{
-        let act;if(it[1])act=D.glTotal(L,it[1],ent,'2026-07');else act=-['4000','4100'].reduce((a2,n)=>a2+D.glTotal(L,n,ent,'2026-07'),0);
+        let act;if(it[1])act=D.glTotal(L,it[1],ent,'2026-07');else act=-['4000','4100','4200'].reduce((a2,n)=>a2+D.glTotal(L,n,ent,'2026-07'),0);
         const bud=it[0]==='6400'&&(ent==='CA'||ent==='GROUP')?Math.round(act*.66):Math.round(act*(it[2]<0?1.03:(it[1]==='5100'?.82:.97)));
         const v=act-bud,pc=bud?Math.round(v/bud*1000)/10:0;const bad=it[2]>0?v>0:v<0;
         return {name:it[0],act:this.fm(Math.round(act)),bud:this.fm(bud),var:(v>0?'+':'')+this.fm(Math.round(v)),pct:(pc>0?'+':'')+pc+'%',vc:Math.abs(pc)>10&&bad?'#C0392B':(Math.abs(pc)>10?'#1E7A46':'#5B6472'),fw:'400',bg:'#fff'}});
@@ -2077,7 +2077,7 @@ class Component extends DCLogic {
   vals_ent(){
     const s=this.state,D=this.D;if(!D||s.screen!=='entities')return {isEnt:s.screen==='entities',entTree:[],entRows:[],entIC:[]};
     const L=this.ledger;
-    const rev=e=>-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,e,'2026-07'),0)*D.FX[D.ENTITIES.find(x=>x.id===e).cur];
+    const rev=e=>-['4000','4100','4200'].reduce((a,n)=>a+D.glTotal(L,n,e,'2026-07'),0)*D.FX[D.ENTITIES.find(x=>x.id===e).cur];
     const exp=e=>D.COA.filter(a=>'XC'.includes(a.t)).reduce((a,c)=>a+D.glTotal(L,c.n,e,'2026-07'),0)*D.FX[D.ENTITIES.find(x=>x.id===e).cur];
     const cash=D.cashByEntity(L,'2026-07');
     const row=(name,f,o={})=>{const ca=f('CA'),iN=f('IN'),us=f('US');return {name,ca:D.fmt(Math.round(ca)),in:D.fmt(Math.round(iN)),us:D.fmt(Math.round(us)),grp:D.fmt(Math.round(ca+iN+us+(o.adj||0))),fw:o.total?'700':'400',bg:o.total?'#F4F7FC':'#fff'}};
@@ -2140,7 +2140,7 @@ class Component extends DCLogic {
     if(s.mode!=='ai'||s.aiScreen!=='mission'||!D)return {isAiMission:false};
     const L=this.ledger;
     const cash=D.cashByEntity(L,'2026-07').reduce((a,r)=>a+r.cad,0);
-    const rev=-['4000','4100'].reduce((a,n)=>a+D.glTotal(L,n,'GROUP','2026-07'),0);
+    const rev=-['4000','4100','4200'].reduce((a,n)=>a+D.glTotal(L,n,'GROUP','2026-07'),0);
     const askTel=()=>this.ask('Why is telephone expense 50% higher than last year?');
     const P=s.persona;
     let greet,parts;
