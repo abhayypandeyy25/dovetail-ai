@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dovetail AI — Agent Harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#12284B; --blue:#1F4E79; --teal:#2DD4BF; --tealdk:#0d7a6d;
+  --bg:#F4F7FC; --line:#e3e9f2; --grey:#5B6472; --red:#B42318; --redbg:#FDECEC;
+  --green:#1E7A46; --greenbg:#E8F6EE; --amber:#B4690E; --amberbg:#FFF6E5;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:#222}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+
+header{background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:center;gap:14px}
+.logo{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--blue));
+  display:grid;place-items:center;font-weight:700;color:var(--navy);flex:none}
+h1{font-family:Fraunces,serif;font-size:19px;font-weight:600;margin:0}
+.sub{font-size:11px;color:#8fa3c0;margin-top:2px}
+.badge{margin-left:auto;background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.4);
+  color:var(--teal);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px}
+
+.wrap{max-width:1500px;margin:0 auto;padding:20px 24px 60px}
+.grid{display:grid;grid-template-columns:330px 1fr;gap:18px;align-items:start}
+@media(max-width:1000px){.grid{grid-template-columns:1fr}}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-bottom:16px}
+.card h2{font-family:Fraunces,serif;font-size:15px;color:var(--navy);margin:0 0 3px}
+.card .hint{font-size:11.5px;color:var(--grey);margin-bottom:12px;line-height:1.5}
+
+button{font-family:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);
+  background:#fff;font-size:12.5px;padding:8px 12px;transition:.12s}
+button:hover{border-color:var(--blue)}
+button.primary{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
+button.primary:hover{background:var(--blue)}
+button.teal{background:linear-gradient(135deg,var(--teal),#22b3a1);color:#0c2d29;border:none;font-weight:700}
+button:disabled{opacity:.4;cursor:not-allowed}
+
+.item{width:100%;text-align:left;padding:10px 12px;margin-bottom:6px;border-radius:9px;
+  border:1px solid var(--line);background:#fff}
+.item:hover{border-color:var(--teal);background:#fafdfd}
+.item.on{border-color:var(--teal);background:#f0fbfa;box-shadow:0 0 0 2px rgba(45,212,191,.18)}
+.item .v{font-weight:600;font-size:12.5px;color:var(--navy)}
+.item .d{font-size:11px;color:var(--grey);margin-top:2px}
+.item .a{font-size:11.5px;font-weight:700;color:var(--navy);float:right}
+
+.step{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #f0f3f8}
+.step:last-child{border-bottom:none}
+.n{width:24px;height:24px;border-radius:50%;background:var(--bg);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--blue);flex:none}
+.n.hi{background:var(--teal);border-color:var(--teal);color:var(--navy)}
+.n.no{background:var(--redbg);border-color:#f3c4c0;color:var(--red)}
+.n.sk{background:#eef1f6;color:#9aa5b5}
+.sname{font-size:12.5px;font-weight:600;color:var(--navy)}
+.sdet{font-size:11.5px;color:var(--grey);margin-top:2px;line-height:1.55}
+
+.pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
+  letter-spacing:.3px;text-transform:uppercase}
+.pill.ok{background:var(--greenbg);color:var(--green)}
+.pill.bad{background:var(--redbg);color:var(--red)}
+.pill.warn{background:var(--amberbg);color:var(--amber)}
+.pill.info{background:#EAF1F9;color:var(--blue)}
+
+table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px}
+th{text-align:left;font-weight:600;color:var(--grey);padding:5px 7px;border-bottom:1px solid var(--line);font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:5px 7px;border-bottom:1px solid #f4f6fa}
+tr:last-child td{border-bottom:none}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:11.5px;margin-top:8px}
+.kv dt{color:var(--grey)}
+.kv dd{margin:0;font-weight:600;color:var(--navy)}
+
+.hash{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--grey);word-break:break-all;line-height:1.5}
+.stat{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid #f4f6fa}
+.stat:last-child{border-bottom:none}
+.stat b{color:var(--navy)}
+
+.note{background:var(--amberbg);border-left:3px solid var(--amber);padding:9px 12px;
+  border-radius:0 7px 7px 0;font-size:11.5px;line-height:1.55;margin-top:10px}
+.note.good{background:var(--greenbg);border-left-color:var(--green)}
+.empty{text-align:center;color:var(--grey);font-size:12.5px;padding:44px 16px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">D</div>
+  <div>
+    <h1>Agent Harness</h1>
+    <div class="sub">The decision pipeline, actually running — not a mockup</div>
+  </div>
+  <div class="badge" id="selfcheck">running self-check…</div>
+</header>
+
+<div class="wrap">
+<div class="grid">
+
+  <!-- ============ LEFT ============ -->
+  <div>
+    <div class="card">
+      <h2>Work items</h2>
+      <div class="hint">Each runs the full ten-step pipeline. Nothing below is pre-scripted — confidence, routing and hashes are computed on click.</div>
+      <div id="queue"></div>
+    </div>
+
+    <div class="card">
+      <h2>Learning loop</h2>
+      <div class="hint">Three consistent corrections with zero contradictions mine a rule. A human confirms it. After that the model is never called for that vendor again.</div>
+      <button class="primary" style="width:100%;margin-bottom:7px" id="teach">1 · Correct 3 Delta Freight bills → 5100</button>
+      <button style="width:100%;margin-bottom:7px" id="mine" disabled>2 · Run nightly rule mining</button>
+      <button class="teal" style="width:100%" id="confirmBtn" disabled>3 · Confirm rule (human gate)</button>
+      <div id="learnOut"></div>
+    </div>
+
+    <div class="card">
+      <h2>Fleet</h2>
+      <div id="stats"></div>
+    </div>
+
+    <div class="card">
+      <h2>Audit chain</h2>
+      <div class="hint">Every decision writes a receipt, hash-chained. Verification re-walks the chain and recomputes every hash.</div>
+      <button class="primary" style="width:100%" id="verify">Verify chain</button>
+      <div id="verifyOut"></div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT ============ -->
+  <div>
+    <div class="card" id="traceCard">
+      <div class="empty">Pick a work item to watch the pipeline run.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script type="module">
+import * as H from './harness.js';
+
+// --- chart of accounts -------------------------------------------------------
+const COA = [
+  {n:'5000',name:'Cloud Hosting (COGS)',keywords:['cloud','hosting','aws'],allowPosting:true},
+  {n:'5100',name:'Implementation Labour (COGS)',keywords:['contractor','implementation','freight'],allowPosting:true},
+  {n:'6100',name:'Rent',keywords:['rent','lease','office space'],allowPosting:true},
+  {n:'6200',name:'Software & Tools',keywords:['software','subscription','licence'],allowPosting:true},
+  {n:'6400',name:'Telephone',keywords:['telecom','phone','mobile'],allowPosting:true},
+  {n:'6700',name:'Office Supplies',keywords:['supplies','stationery'],allowPosting:true},
+  {n:'6800',name:'Marketing & Printing',keywords:['print','marketing'],allowPosting:true},
+  // Control accounts carry keywords deliberately: a model CAN propose posting
+  // straight to GST Payable, which is realistic and wrong. V3_CONTROL is what
+  // stops it — the guard exists precisely because the proposal looks plausible.
+  {n:'2000',name:'Accounts Payable',keywords:['payable'],allowPosting:true,controlSubledger:'AP'},
+  {n:'2100',name:'Sales Tax Payable',keywords:['qst','gst','remittance','sales tax'],allowPosting:true,controlSubledger:'TAX'},
+  {n:'2200',name:'Payroll Liabilities',keywords:['payroll','salaries'],allowPosting:true,controlSubledger:'PAYROLL'}
+];
+
+const ex = (v,r)=>({value:v,ref:r});
+const WORK = [
+  {id:'B01',label:'Bell Canada · #1263',note:'Recurring telecom, 14 prior bills',amt:130410,period:'2026-07',
+   extraction:{vendor:ex('Bell Canada','p1:hdr'),description:ex('Monthly telecom services','p1:l3'),
+     amount_minor:ex(130410,'p1:total'),invoice_no:ex('1263','p1:hdr')}},
+  {id:'B09',label:'Maple Systems · MS-1188',note:'PO-backed, price +22%',amt:777000,period:'2026-07',
+   extraction:{vendor:ex('Maple Systems','p1:hdr'),description:ex('Implementation contractor hours','p1:l2'),
+     amount_minor:ex(777000,'p1:total'),invoice_no:ex('MS-1188','p1:hdr'),po_number:ex('PO-2214','p1:hdr')}},
+  {id:'B12',label:'Delta Freight · DF-0042',note:'No PO, no prior pattern',amt:398000,period:'2026-07',
+   extraction:{vendor:ex('Delta Freight','p1:hdr'),description:ex('Freight to Meridian site, Hamilton','p1:l1'),
+     amount_minor:ex(398000,'p1:total'),invoice_no:ex('DF-0042','p1:hdr')}},
+  {id:'B20',label:'Ironwood Capital · IC-9910',note:'CAD 25,000 — above the floor',amt:2500000,period:'2026-07',
+   extraction:{vendor:ex('Ironwood Capital','p1:hdr'),description:ex('Advisory retainer','p1:l1'),
+     amount_minor:ex(2500000,'p1:total'),invoice_no:ex('IC-9910','p1:hdr')}},
+  {id:'B21',label:'Revenu Québec · QST-07',note:'Tax control account',amt:88200,period:'2026-07',
+   extraction:{vendor:ex('Revenu Quebec','p1:hdr'),description:ex('QST remittance','p1:l1'),
+     amount_minor:ex(88200,'p1:total'),invoice_no:ex('QST-07','p1:hdr')}},
+  {id:'B22',label:'Bell Canada · #1263 (again)',note:'Duplicate invoice number',amt:130410,period:'2026-07',
+   extraction:{vendor:ex('Bell Canada','p1:hdr'),description:ex('Monthly telecom services','p1:l3'),
+     amount_minor:ex(130410,'p1:total'),invoice_no:ex('1263','p1:hdr')}}
+];
+
+const harness = H.createHarness({
+  coa:COA, openPeriods:['2026-07'],
+  // No seeded duplicates. Process the first Bell bill, then the second one with
+  // the same invoice number, and V5 catches it on evidence the harness gathered
+  // itself.
+  postedKeys:[],
+  vendorHistory:{
+    'Bell Canada':{count:14,agreement:0.98},
+    'Maple Systems':{count:9,agreement:0.91},
+    'Revenu Quebec':{count:6,agreement:0.95},
+    'Ironwood Capital':{count:3,agreement:0.8}
+  },
+  rules:[{id:'R-009',status:'ACTIVE',predicate:{vendor:'Bell Canada'},action:{account:'6400'},
+    description:'Bell Canada → 6400 Telephone',rollingAccuracy:0.987,timesApplied:156}]
+});
+
+// --- self-check --------------------------------------------------------------
+(function(){
+  const t=[];
+  t.push(H.sha256('abc')==='ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  t.push(H.dec(H.toMinor(0.1)+H.toMinor(0.2))==='0.30');
+  t.push((()=>{try{H.canon({x:1});return false}catch{return true}})());
+  const c=H.createChain('T');const a={actorId:'x',kind:'AGENT'};
+  for(let i=0;i<5;i++)c.append('e',{n:String(i)},a);
+  t.push(c.verify().ok);
+  const el=document.getElementById('selfcheck');
+  const allOk=t.every(Boolean);
+  el.textContent = allOk ? `self-check ${t.length}/${t.length} ✓` : `self-check FAILED`;
+  el.style.background = allOk?'rgba(45,212,191,.15)':'rgba(180,35,24,.2)';
+})();
+
+// --- rendering ---------------------------------------------------------------
+const $=(id)=>document.getElementById(id);
+const esc=(s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const money=(m)=>H.dec(m).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+let selected=null;
+
+function renderQueue(){
+  $('queue').innerHTML = WORK.map(w=>`
+    <button class="item ${selected===w.id?'on':''}" data-id="${w.id}">
+      <span class="a">${money(w.amt)}</span>
+      <div class="v">${esc(w.label)}</div>
+      <div class="d">${esc(w.note)}</div>
+    </button>`).join('');
+  [...$('queue').querySelectorAll('.item')].forEach(b=>
+    b.onclick=()=>{selected=b.dataset.id;renderQueue();run(b.dataset.id)});
+}
+
+const ROUTE_PILL={AutoExecuted:'ok',QueuedForReview:'warn',Escalated:'bad',Suppressed:'info',Failed:'bad'};
+
+function run(id){
+  const w=WORK.find(x=>x.id===id);
+  const d=harness.process(w);
+
+  const steps=d.trace.map(s=>{
+    let cls='';
+    if(s.n===5) cls=s.allPassed?'hi':'no';
+    else if(s.n===4&&s.skipped) cls='sk';
+    else if(s.n===7) cls=d.route==='AutoExecuted'?'hi':'no';
+    return `<div class="step">
+      <div class="n ${cls}">${s.n}</div>
+      <div style="flex:1;min-width:0">
+        <div class="sname">${esc(s.name)}</div>
+        <div class="sdet">${esc(s.detail)}</div>
+        ${s.n===5?validatorTable(s.results):''}
+        ${s.n===6?featureTable(d):''}
+        ${s.n===7?gateBox(d):''}
+        ${s.n===10?`<div class="hash" style="margin-top:6px">${s.hash}</div>`:''}
+      </div></div>`;
+  }).join('');
+
+  $('traceCard').innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:6px">
+      <div style="flex:1">
+        <h2>${esc(w.label)}</h2>
+        <div class="hint" style="margin:0">${money(w.amt)} CAD · ${esc(w.note)}</div>
+      </div>
+      <span class="pill ${ROUTE_PILL[d.route]}">${d.route}</span>
+    </div>
+    <div style="border-top:1px solid var(--line);margin-top:10px">${steps}</div>`;
+  renderStats();
+}
+
+function validatorTable(rs){
+  return `<table><thead><tr><th>Validator</th><th>Result</th><th>Detail</th></tr></thead><tbody>${
+    rs.map(r=>`<tr><td class="mono" style="font-size:10.5px">${r.id}</td>
+      <td><span class="pill ${r.pass?'ok':'bad'}">${r.pass?'pass':'fail'}</span></td>
+      <td style="color:var(--grey)">${esc(r.detail)}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function featureTable(d){
+  const f=d.features;
+  const rows=Object.entries(f).map(([k,v])=>
+    `<tr><td>${k.replace(/([A-Z])/g,' $1').toLowerCase()}</td>
+     <td class="mono" style="text-align:right">${H.ratio(v)}</td></tr>`).join('');
+  return `<table style="max-width:330px"><thead><tr><th>Feature</th><th style="text-align:right">Value</th></tr></thead>
+    <tbody>${rows}
+    <tr style="border-top:2px solid var(--line)"><td><b>raw → calibrated</b></td>
+    <td class="mono" style="text-align:right"><b>${H.ratio(d.raw)} → ${H.ratio(d.confidence)}</b></td></tr>
+    </tbody></table>
+    <div class="note">The model's own opinion of itself is deliberately absent. Every feature above is measurable.</div>`;
+}
+
+function gateBox(d){
+  const g=d.gate;
+  const cls=g.confidenceConsulted?'note':'note';
+  return `<div class="${cls}" style="${g.confidenceConsulted?'':'background:var(--redbg);border-left-color:var(--red)'}">
+    <b>${esc(g.reason)}</b> · policy <span class="mono">${esc(g.policyVersion)}</span><br>
+    ${esc(g.explain)}<br>
+    <b style="color:${g.confidenceConsulted?'var(--green)':'var(--red)'}">
+      ${g.confidenceConsulted?'Confidence was consulted.':'Confidence was NOT consulted — this rule fires before the score is read.'}
+    </b></div>`;
+}
+
+function renderStats(){
+  const s=harness.stats();
+  const saved=s.processed?Math.round((1-s.modelCalls/s.processed)*100):0;
+  $('stats').innerHTML=`
+    <div class="stat"><span>Processed</span><b>${s.processed}</b></div>
+    <div class="stat"><span>Auto-executed</span><b>${s.autoExecuted}</b></div>
+    <div class="stat"><span>Queued for review</span><b>${s.queued}</b></div>
+    <div class="stat"><span>Escalated</span><b>${s.escalated}</b></div>
+    <div class="stat"><span>Model calls</span><b>${s.modelCalls} / ${s.processed}</b></div>
+    <div class="stat"><span>Covered by rules</span><b style="color:var(--tealdk)">${saved}% skipped the model</b></div>
+    <div class="stat"><span>Chain length</span><b>${s.chainLength}</b></div>
+    <div class="stat"><span>Labels collected</span><b>${s.labels}</b></div>
+    <div class="stat"><span>ECE</span><b>${s.ece===null?'—':s.ece.toFixed(4)}</b></div>`;
+}
+
+// --- learning loop -----------------------------------------------------------
+let mined=null;
+$('teach').onclick=()=>{
+  for(let i=0;i<3;i++){
+    const wi={id:`DF-1${i}`,period:'2026-07',
+      extraction:{vendor:ex('Delta Freight','p1:hdr'),
+        description:ex('Freight to Meridian site, Hamilton','p1:l1'),
+        amount_minor:ex(214000+i*1100,'p1:total'),invoice_no:ex(`DF-01${i}`,'p1:hdr')}};
+    const d=harness.process(wi);
+    harness.feedback(d,'EDITED',[{field:'account',from:d.resolved.account,to:'5100'}]);
+  }
+  $('learnOut').innerHTML=`<div class="note">Three corrections recorded with field-level diffs. An approval teaches almost nothing; an <b>edit</b> teaches precisely what was wrong.</div>`;
+  $('mine').disabled=false; $('teach').disabled=true; renderStats();
+};
+
+$('mine').onclick=()=>{
+  mined=harness.mine();
+  $('learnOut').innerHTML=mined.length
+    ? `<div class="note"><b>${mined[0].id} proposed</b> — <span class="mono">${esc(mined[0].description)}</span><br>
+       ${mined[0].supportCount} consistent corrections, ${mined[0].contradictionCount} contradictions.
+       Status <b>${mined[0].status}</b> — inert until a human confirms it.</div>`
+    : `<div class="note">No rule met the threshold.</div>`;
+  $('confirmBtn').disabled=!mined.length; $('mine').disabled=true;
+};
+
+$('confirmBtn').onclick=()=>{
+  harness.confirm(mined[0]);
+  const wi={id:'DF-0057',period:'2026-07',
+    extraction:{vendor:ex('Delta Freight','p1:hdr'),
+      description:ex('Freight to Meridian site, Hamilton','p1:l1'),
+      amount_minor:ex(214000,'p1:total'),invoice_no:ex('DF-0057','p1:hdr')}};
+  const d=harness.process(wi);
+  $('learnOut').innerHTML=`<div class="note good">
+    <b>${mined[0].id} is active.</b> A new Delta Freight bill was just processed:
+    coded <b>${d.resolved.account}</b>, and the model was
+    <b>${d.modelCalled?'called':'never called'}</b>.<br>
+    Every confirmed rule permanently deletes a model call — the accuracy story and the cost curve are the same mechanism.</div>`;
+  $('confirmBtn').disabled=true; renderStats();
+  selected='DF-0057'; renderQueue();
+  $('traceCard').scrollIntoView({behavior:'smooth',block:'start'});
+  run2(d,'Delta Freight · DF-0057','After rule R-017 — model skipped');
+};
+
+function run2(d,label,note){
+  const steps=d.trace.map(s=>{
+    let cls='';
+    if(s.n===5) cls=s.allPassed?'hi':'no';
+    else if(s.n===4&&s.skipped) cls='sk';
+    else if(s.n===7) cls=d.route==='AutoExecuted'?'hi':'no';
+    return `<div class="step"><div class="n ${cls}">${s.n}</div>
+      <div style="flex:1;min-width:0"><div class="sname">${esc(s.name)}</div>
+      <div class="sdet">${esc(s.detail)}</div>
+      ${s.n===5?validatorTable(s.results):''}
+      ${s.n===6?featureTable(d):''}
+      ${s.n===7?gateBox(d):''}
+      ${s.n===10?`<div class="hash" style="margin-top:6px">${s.hash}</div>`:''}
+      </div></div>`}).join('');
+  $('traceCard').innerHTML=`
+    <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:6px">
+      <div style="flex:1"><h2>${esc(label)}</h2><div class="hint" style="margin:0">${esc(note)}</div></div>
+      <span class="pill ${ROUTE_PILL[d.route]}">${d.route}</span></div>
+    <div style="border-top:1px solid var(--line);margin-top:10px">${steps}</div>`;
+}
+
+// --- chain verification ------------------------------------------------------
+$('verify').onclick=()=>{
+  const r=harness.verify();
+  $('verifyOut').innerHTML=r.ok
+    ? `<div class="note good"><b>Chain intact.</b> ${r.verified} events re-walked; every hash recomputed from its canonical bytes.
+       <div class="hash" style="margin-top:6px">head ${harness.state.chain.head}</div></div>`
+    : `<div class="note" style="background:var(--redbg);border-left-color:var(--red)">
+       <b>Chain broken at event ${r.brokenAt}</b> — ${esc(r.reason)}</div>`;
+};
+
+renderQueue(); renderStats();
+</script>
+</body>
+</html>
