@@ -27,6 +27,7 @@ export const KEYS = {
     CALIBRATION: 'calibration',
     DECISIONS: 'decisions',
     POSTED_KEYS: 'postedKeys',
+    QUEUE: 'queue',
     META: 'meta'
 };
 
@@ -115,6 +116,7 @@ export function serializeState(state) {
         feedback: state.feedback,
         calibration: state.calibration,
         postedKeys: [...state.postedKeys],
+        queue: state.queue ?? [],
         // Decisions carry functions in `trace`; keep only what is replayable.
         decisions: state.decisions.map((d) => ({
             workItemId: d.workItemId,
@@ -138,6 +140,7 @@ export async function saveState(store, state) {
         store.set(KEYS.FEEDBACK, snap.feedback),
         store.set(KEYS.CALIBRATION, snap.calibration),
         store.set(KEYS.POSTED_KEYS, snap.postedKeys),
+        store.set(KEYS.QUEUE, snap.queue),
         store.set(KEYS.DECISIONS, snap.decisions),
         store.set(KEYS.META, { version: snap.version, savedAt: snap.savedAt })
     ]);
@@ -146,15 +149,15 @@ export async function saveState(store, state) {
 
 export async function loadState(store) {
     if (!store?.available) return null;
-    const [chain, rules, feedback, calibration, postedKeys, decisions, meta] =
+    const [chain, rules, feedback, calibration, postedKeys, decisions, queue, meta] =
         await Promise.all([
             store.get(KEYS.CHAIN), store.get(KEYS.RULES, []),
             store.get(KEYS.FEEDBACK, []), store.get(KEYS.CALIBRATION, null),
             store.get(KEYS.POSTED_KEYS, []), store.get(KEYS.DECISIONS, []),
-            store.get(KEYS.META, null)
+            store.get(KEYS.QUEUE, []), store.get(KEYS.META, null)
         ]);
     if (!chain && !rules.length && !feedback.length) return null;   // nothing saved yet
-    return { chain, rules, feedback, calibration, postedKeys, decisions, meta };
+    return { chain, rules, feedback, calibration, postedKeys, decisions, queue, meta };
 }
 
 // -----------------------------------------------------------------------------

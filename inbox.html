@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dovetail — Approval Inbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#12284B;--blue:#1F4E79;--teal:#2DD4BF;--tealdk:#0d7a6d;--bg:#F4F7FC;
+  --line:#e3e9f2;--grey:#5B6472;--red:#B42318;--redbg:#FDECEC;--green:#1E7A46;
+  --greenbg:#E8F6EE;--amber:#B4690E;--amberbg:#FFF6E5}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:#222}
+code,.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+header{background:var(--navy);color:#fff;padding:15px 24px;display:flex;align-items:center;gap:14px}
+.logo{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--teal),var(--blue));
+  display:grid;place-items:center;font-weight:700;color:var(--navy);flex:none}
+h1{font-family:Fraunces,serif;font-size:18px;margin:0;font-weight:600}
+.sub{font-size:11px;color:#8fa3c0;margin-top:2px}
+.hnav{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:12.5px}
+.hnav a{color:#8fa3c0;text-decoration:none}.hnav a:hover{color:#fff}
+.cleared{background:rgba(45,212,191,.15);border:1px solid rgba(45,212,191,.4);color:var(--teal);
+  font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px}
+
+.wrap{max-width:1500px;margin:0 auto;padding:18px 24px 60px}
+.grid{display:grid;grid-template-columns:370px 1fr;gap:18px;align-items:start}
+@media(max-width:1050px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+h2{font-family:Fraunces,serif;font-size:15px;color:var(--navy);margin:0 0 3px}
+.hint{font-size:11.5px;color:var(--grey);line-height:1.55;margin-bottom:12px}
+
+button{font-family:inherit;font-size:12.5px;padding:9px 13px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff;transition:.12s}
+button:hover:not(:disabled){border-color:var(--blue)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.approve{background:var(--green);color:#fff;border-color:var(--green);font-weight:600}
+button.approve:hover{filter:brightness(1.1)}
+button.edit{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
+button.reject{background:#fff;color:var(--red);border-color:#f0c6c2}
+select{font-family:inherit;font-size:12.5px;padding:8px 10px;border:1px solid var(--line);
+  border-radius:8px;width:100%;background:#fff}
+
+.qitem{width:100%;text-align:left;padding:11px 13px;margin-bottom:7px;border-radius:9px;
+  border:1px solid var(--line);background:#fff;display:block}
+.qitem:hover{border-color:var(--teal);background:#fafdfd}
+.qitem.on{border-color:var(--teal);background:#f0fbfa;box-shadow:0 0 0 2px rgba(45,212,191,.18)}
+.qitem .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.qitem .v{font-weight:600;font-size:12.5px;color:var(--navy)}
+.qitem .a{font-size:12px;font-weight:700;color:var(--navy);white-space:nowrap}
+.qitem .why{font-size:11px;color:var(--grey);margin-top:3px;line-height:1.45}
+.qitem .age{font-size:10px;color:var(--grey);margin-top:4px}
+
+.badge{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:20px;
+  letter-spacing:.3px;text-transform:uppercase;margin-top:5px}
+.b-floor{background:#EAF1F9;color:var(--blue)}
+.b-fail{background:var(--redbg);color:var(--red)}
+.b-lock{background:var(--amberbg);color:var(--amber)}
+.b-low{background:var(--redbg);color:var(--red)}
+.b-mid{background:var(--amberbg);color:var(--amber)}
+.b-other{background:#eef1f6;color:var(--grey)}
+
+.decision{background:linear-gradient(135deg,#f0fbfa,#fafdfd);border:1px solid rgba(45,212,191,.35);
+  border-radius:11px;padding:15px 17px;margin-bottom:14px}
+.decision .lead{font-size:15px;color:var(--navy);font-weight:600;line-height:1.45}
+.decision .alt{font-size:12.5px;color:var(--grey);margin-top:7px;line-height:1.55}
+.decision .imp{font-size:12.5px;color:var(--navy);margin-top:9px;padding-top:9px;
+  border-top:1px solid rgba(45,212,191,.3);line-height:1.5}
+
+table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px}
+th{text-align:left;font-weight:600;color:var(--grey);padding:5px 7px;border-bottom:1px solid var(--line);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:5px 7px;border-bottom:1px solid #f4f6fa;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:12px;margin-top:6px}
+.kv dt{color:var(--grey)}.kv dd{margin:0;font-weight:600;color:var(--navy)}
+.note{background:var(--amberbg);border-left:3px solid var(--amber);padding:10px 12px;
+  border-radius:0 7px 7px 0;font-size:11.5px;line-height:1.55;margin-top:11px}
+.note.good{background:var(--greenbg);border-left-color:var(--green)}
+.note.bad{background:var(--redbg);border-left-color:var(--red)}
+.empty{text-align:center;color:var(--grey);font-size:12.5px;padding:50px 20px;line-height:1.7}
+.stat{display:flex;justify-content:space-between;padding:6px 0;font-size:12px;border-bottom:1px solid #f4f6fa}
+.stat:last-child{border-bottom:none}.stat b{color:var(--navy)}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+.hash{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--grey);word-break:break-all}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">D</div>
+  <div>
+    <h1>Approval Inbox</h1>
+    <div class="sub">Where the system learns — every edit is a training label</div>
+  </div>
+  <div class="hnav">
+    <a href="./harness.html">← Harness</a>
+    <a href="./verify.html">Verifier</a>
+    <span class="cleared" id="clearedBadge">—</span>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="grid">
+
+  <div>
+    <div class="card">
+      <h2>Awaiting you</h2>
+      <div class="hint">Sorted by what has waited longest. Each badge says <b>why</b> a person is needed —
+        routing is deterministic, so the reason is always a fact, never a guess.</div>
+      <div id="queue"></div>
+    </div>
+
+    <div class="card">
+      <h2>Label harvest</h2>
+      <div class="hint">An approval teaches almost nothing. An <b>edit</b> teaches precisely what was wrong.</div>
+      <div id="stats"></div>
+    </div>
+  </div>
+
+  <div id="detail">
+    <div class="card"><div class="empty">Nothing selected.<br>Pick an item from the queue.</div></div>
+  </div>
+
+</div>
+</div>
+
+<script type="module">
+import * as H from './harness.js';
+import * as Store from './harness-store.js';
+
+const COA = [
+  {n:'5000',name:'Cloud Hosting (COGS)'},{n:'5100',name:'Implementation Labour (COGS)'},
+  {n:'6100',name:'Rent'},{n:'6200',name:'Software & Tools'},{n:'6400',name:'Telephone'},
+  {n:'6700',name:'Office Supplies'},{n:'6800',name:'Marketing & Printing'}
+];
+const PROJECT_OF = {'5100':'Meridian Deploy'};
+
+const $=(id)=>document.getElementById(id);
+const esc=(s)=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const money=(m)=>H.dec(m||0).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+const acctName=(n)=>COA.find(a=>a.n===n)?.name ?? n ?? '—';
+
+function ago(ts){
+  const s=Math.round((Date.now()-ts)/1000);
+  if(s<60) return `${s}s ago`;
+  if(s<3600) return `${Math.round(s/60)}m ago`;
+  if(s<86400) return `${Math.round(s/3600)}h ago`;
+  return `${Math.round(s/86400)}d ago`;
+}
+
+const BADGE={PLATFORM_FLOOR:['b-floor','always a person'],VALIDATOR_FAILURE:['b-fail','check failed'],
+  AUTONOMY_NOT_EARNED:['b-lock','autonomy locked'],LOW_CONFIDENCE:['b-low','needs a decision'],
+  MID_CONFIDENCE:['b-mid','worth a look'],BUDGET_EXCEEDED:['b-other','budget spent'],
+  DEGRADED:['b-other','model unavailable'],MODEL_ERROR:['b-other','model failed']};
+
+const store = await Store.openStore() ?? Store.memoryStore;
+const restored = await Store.loadState(store);
+const harness = H.createHarness({
+  coa: COA.map(a=>({...a,allowPosting:true})), openPeriods:['2026-07'], restore: restored
+}).onChange(()=>Store.saveState(store, harness.state));
+
+let selected=null;
+
+function renderQueue(){
+  const q=[...harness.queue].sort((a,b)=>a.queuedAt-b.queuedAt);
+  $('clearedBadge').textContent = `${harness.resolved.length} cleared · ${q.length} waiting`;
+
+  if(!q.length){
+    $('queue').innerHTML=`<div class="empty" style="padding:26px 10px">
+      Queue is empty.<br><span style="font-size:11.5px">Process some bills in the
+      <a href="./harness.html" style="color:var(--blue)">harness</a> — anything not
+      auto-executed arrives here.</span></div>`;
+    return;
+  }
+  $('queue').innerHTML=q.map(it=>{
+    const [cls,txt]=BADGE[it.reasonCode]??['b-other',it.reasonCode.toLowerCase().replace(/_/g,' ')];
+    return `<button class="qitem ${selected===it.workItemId?'on':''}" data-id="${esc(it.workItemId)}">
+      <div class="top"><span class="v">${esc(it.label)}</span><span class="a">${money(it.amountMinor)}</span></div>
+      <div class="why">${esc(it.reasonText)}</div>
+      <span class="badge ${cls}">${esc(txt)}</span>
+      <div class="age">waiting ${ago(it.queuedAt)}</div>
+    </button>`}).join('');
+  [...$('queue').querySelectorAll('.qitem')].forEach(b=>
+    b.onclick=()=>{selected=b.dataset.id;renderQueue();renderDetail()});
+}
+
+function renderDetail(){
+  const it=harness.queue.find(q=>q.workItemId===selected);
+  if(!it){ $('detail').innerHTML=`<div class="card"><div class="empty">Nothing selected.</div></div>`; return; }
+
+  const proj=PROJECT_OF[it.proposedAccount];
+  const alts=it.alternatives?.length
+    ? it.alternatives.map(a=>`${a.account} ${a.name}`).join(', ')
+    : COA.filter(a=>a.n!==it.proposedAccount).slice(0,2).map(a=>`${a.n} ${a.name}`).join(', ');
+
+  // The decision is presented as a consequence, not a score. A reviewer can
+  // act on "adds 3,980 to Meridian Deploy"; they cannot act on "64%".
+  const lead = it.proposedAccount
+    ? `Coded to <b>${esc(it.proposedAccount)} ${esc(acctName(it.proposedAccount))}</b>`
+    : `<b>No coding proposed</b> — the system declined rather than guess`;
+
+  const failed = it.failedChecks.length
+    ? `<div class="note bad"><b>What stopped it</b><br>${
+        it.failedChecks.map(f=>`<span class="mono">${esc(f.id)}</span> — ${esc(f.detail)}`).join('<br>')
+      }</div>` : '';
+
+  const evidence = it.evidence?.length
+    ? `<table><thead><tr><th>Looked at</th><th>Found</th></tr></thead><tbody>${
+        it.evidence.map(e=>`<tr><td class="mono" style="font-size:10.5px;color:var(--blue)">${esc(e.tool)}
+          <div style="color:var(--grey)">${esc(JSON.stringify(e.args??{}))}</div></td>
+          <td style="color:var(--grey);font-size:10.5px">${esc(JSON.stringify(e.result)).slice(0,150)}</td></tr>`).join('')
+      }</tbody></table>` : `<div class="hint" style="margin:8px 0 0">No lookups — a rule covered this outright.</div>`;
+
+  $('detail').innerHTML=`
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+      <h2>${esc(it.label)}</h2>
+      <span style="font-size:17px;font-weight:700;color:var(--navy)">${money(it.amountMinor)}</span>
+    </div>
+    <dl class="kv" style="margin-bottom:14px">
+      <dt>Supplier</dt><dd>${esc(it.vendor??'—')}</dd>
+      <dt>Description</dt><dd style="font-weight:400">${esc(it.description)}</dd>
+      <dt>Invoice</dt><dd>${esc(it.invoiceNo??'—')}</dd>
+      <dt>Period</dt><dd>${esc(it.period)}</dd>
+    </dl>
+
+    <div class="decision">
+      <div class="lead">${lead}</div>
+      <div class="alt">Proposed by ${esc(it.proposedBy)}${it.reasoning?` — “${esc(it.reasoning)}”`:''}<br>
+        <b>If that is wrong</b>, the likely candidates are ${esc(alts)}.</div>
+      <div class="imp">${it.proposedAccount
+        ? `Approving adds <b>${money(it.amountMinor)} CAD</b> to ${proj?`the <b>${esc(proj)}</b> project`:`<b>${esc(acctName(it.proposedAccount))}</b>`} for ${esc(it.period)}.`
+        : `Nothing will post until an account is chosen.`}</div>
+    </div>
+
+    <div class="note"><b>Why you are seeing this</b><br>${esc(it.reasonText)}
+      <br><span style="color:var(--grey)">Policy ${esc(it.policyVersion)} · routing is deterministic, so this reason is a fact rather than a guess.</span></div>
+    ${failed}
+
+    <h2 style="margin-top:18px;font-size:13px">What the agent checked</h2>
+    ${evidence}
+
+    <h2 style="margin-top:18px;font-size:13px">Your decision</h2>
+    <div class="hint" style="margin-bottom:6px">Changing the account records a field-level diff.
+      Three consistent diffs with no contradictions mine a rule — that is how the system learns.</div>
+    <select id="acct">
+      <option value="">— no account —</option>
+      ${COA.map(a=>`<option value="${a.n}" ${a.n===it.proposedAccount?'selected':''}>${a.n} ${esc(a.name)}</option>`).join('')}
+    </select>
+    <div class="row">
+      <button class="approve" id="approve">Approve as proposed</button>
+      <button class="edit" id="saveEdit">Approve with my change</button>
+      <button class="reject" id="reject">Reject</button>
+    </div>
+    <div class="hash" style="margin-top:12px">receipt ${esc(it.receiptHash??'—')}</div>
+  </div>`;
+
+  $('approve').onclick=()=>resolve(it,'APPROVED',[]);
+  $('saveEdit').onclick=()=>{
+    const to=$('acct').value||null;
+    if(to===it.proposedAccount){ resolve(it,'APPROVED',[]); return; }
+    resolve(it,'EDITED',[{field:'account',from:it.proposedAccount,to}]);
+  };
+  $('reject').onclick=()=>resolve(it,'REJECTED',[]);
+}
+
+function resolve(it,kind,edits){
+  const r=harness.resolve(it.workItemId,kind,edits);
+  selected=null;
+  renderQueue(); renderStats();
+
+  const mined=harness.mine();
+  const learned = mined.length
+    ? `<div class="note good"><b>${mined[0].id} proposed</b> — ${esc(mined[0].description)}<br>
+       ${mined[0].supportCount} consistent corrections, ${mined[0].contradictionCount} contradictions.
+       Inert until confirmed.
+       <div class="row"><button class="approve" id="confirmRule">Confirm rule</button></div></div>`
+    : '';
+
+  $('detail').innerHTML=`<div class="card">
+    <h2>${kind==='EDITED'?'Correction recorded':kind==='APPROVED'?'Approved':'Rejected'}</h2>
+    <div class="hint">${esc(it.label)}</div>
+    ${r.feedback.fieldDiffs.length
+      ? `<div class="note good"><b>Field-level diff captured</b><br>${
+          r.feedback.fieldDiffs.map(d=>`<span class="mono">${esc(d.field)}</span>: ${esc(d.from??'none')} → <b>${esc(d.to??'none')}</b>`).join('<br>')
+        }<br><span style="color:var(--grey)">This is the training signal. An approval alone would not have produced one.</span></div>`
+      : `<div class="note">Approval recorded. It confirms the proposal but teaches little —
+         the calibrator gets a label, the rule miner gets nothing.</div>`}
+    ${learned}
+    <div class="row"><button onclick="location.reload()">Back to queue</button></div>
+  </div>`;
+
+  if(mined.length){
+    $('confirmRule').onclick=()=>{
+      harness.confirm(mined[0]);
+      $('detail').innerHTML=`<div class="card"><h2>${mined[0].id} is active</h2>
+        <div class="note good">From now on, matching bills are coded without calling the model.
+        Every confirmed rule permanently deletes a model call.</div>
+        <div class="row"><button onclick="location.reload()">Back to queue</button></div></div>`;
+      renderStats();
+    };
+  }
+}
+
+function renderStats(){
+  const done=harness.resolved;
+  const edits=done.filter(d=>d.resolution==='EDITED').length;
+  const appr=done.filter(d=>d.resolution==='APPROVED').length;
+  const rej=done.filter(d=>d.resolution==='REJECTED').length;
+  const lat=done.filter(d=>d.reviewLatencyMs).map(d=>d.reviewLatencyMs).sort((a,b)=>a-b);
+  const med=lat.length?Math.round(lat[Math.floor(lat.length/2)]/1000):null;
+  const cal=harness.state.calibration;
+  $('stats').innerHTML=`
+    <div class="stat"><span>Waiting</span><b>${harness.queue.length}</b></div>
+    <div class="stat"><span>Cleared</span><b>${done.length}</b></div>
+    <div class="stat"><span>Approved as proposed</span><b>${appr}</b></div>
+    <div class="stat"><span style="color:var(--tealdk)">Edited — teaches the system</span><b style="color:var(--tealdk)">${edits}</b></div>
+    <div class="stat"><span>Rejected</span><b>${rej}</b></div>
+    <div class="stat"><span>Median review time</span><b>${med===null?'—':med+'s'}</b></div>
+    <div class="stat"><span>Labels collected</span><b>${cal.n} / 500</b></div>
+    <div class="stat"><span>ECE</span><b>${cal.ece===null?'—':cal.ece.toFixed(4)}</b></div>
+    <div class="stat"><span>Autonomy</span><b style="color:${cal.n>=500&&cal.ece<0.05?'var(--green)':'var(--amber)'}">${
+      cal.n>=500&&cal.ece!==null&&cal.ece<0.05?'unlocked':'locked'}</b></div>`;
+}
+
+renderQueue(); renderStats();
+setInterval(renderQueue, 15000);   // keep the waiting times honest
+</script>
+</body>
+</html>

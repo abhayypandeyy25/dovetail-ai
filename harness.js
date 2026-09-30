@@ -819,9 +819,24 @@ export async function runPipeline(workItem, state) {
         hash: event.this_hash, chainSeq: event.chain_seq
     });
 
+    // Alternatives the agent actually considered, taken from the tool
+    // transcript where one exists. A reviewer deciding between two plausible
+    // codings needs to see what the second one was — "coded to 5100; if wrong
+    // it is probably 6700" is a decidable question in a way that a bare
+    // confidence score is not.
+    const alternatives = (() => {
+        const searched = (modelMeta?.transcript ?? [])
+            .filter((t) => t.tool === 'search_accounts' && Array.isArray(t.result))
+            .flatMap((t) => t.result);
+        const seen = new Set([resolved.account]);
+        return searched
+            .filter((a) => !a.control && !seen.has(a.account) && !seen.add(a.account))
+            .slice(0, 3);
+    })();
+
     return {
         workItemId: workItem.id, candidate, ruleHit, modelCalled,
-        modelMeta, modelUsage,
+        modelMeta, modelUsage, alternatives,
         resolved, validators, features, raw, confidence,
         gate, route: gate.route, command, receipt: event, trace
     };
@@ -926,6 +941,78 @@ export function policeRules(rules, feedbackEvents) {
 // 11. Harness factory
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// Queue items — what a reviewer actually sees
+// -----------------------------------------------------------------------------
+// A deliberate choice, and the one most likely to be argued with: the
+// confidence score is carried on the item but is NOT meant for display.
+//
+// Confidence is a routing signal, not a verdict. Showing "64%" to a reviewer
+// invites them to treat it as the answer — either rubber-stamping anything
+// high or agonising over anything low, in both cases deferring to a number
+// they cannot interrogate. What a reviewer can actually act on is the
+// decision, its alternatives and its consequence:
+//
+//     "Coded to 5100 Implementation Labour.
+//      If wrong, the candidates are 6700 or 6100.
+//      Adds CAD 3,980 to the Meridian Deploy project."
+//
+// That is a decidable question. "64% confident" is not.
+
+const REASON_TEXT = {
+    PLATFORM_FLOOR:      'A platform rule always sends this to a person, whatever the system thinks.',
+    VALIDATOR_FAILURE:   'A hard check failed. This cannot post until it is resolved.',
+    AUTONOMY_NOT_EARNED: 'Automatic posting is still locked for this task class while the system is being calibrated.',
+    LOW_CONFIDENCE:      'The system could not settle this and is asking a specific question.',
+    MID_CONFIDENCE:      'Plausible, but not certain enough to post unreviewed.',
+    NOVELTY:             'New supplier with no history to compare against.',
+    BUDGET_EXCEEDED:     'The model budget was spent, so this was routed to a person rather than guessed.',
+    DEGRADED:            'The model was unavailable. Rule-covered work continued; this needs a person.',
+    MODEL_ERROR:         'The model failed. Routed to a person rather than guessed.',
+    RULE_COVERED:        'Covered by a learned rule.'
+};
+
+export function toQueueItem(d, workItem) {
+    const e = d.candidate.extraction;
+    const failed = d.validators.results.filter((r) => !r.pass);
+
+    return {
+        workItemId: d.workItemId,
+        label: workItem.label ?? `${e.vendor?.value ?? ''} · ${e.invoice_no?.value ?? ''}`,
+        vendor: e.vendor?.value ?? null,
+        description: e.description?.value ?? '',
+        invoiceNo: e.invoice_no?.value ?? null,
+        amountMinor: d.resolved.amount_minor,
+        period: d.resolved.period,
+
+        route: d.route,
+        reasonCode: d.gate.reason,
+        reasonText: REASON_TEXT[d.gate.reason] ?? d.gate.explain,
+        policyVersion: d.gate.policyVersion,
+
+        proposedAccount: d.resolved.account,
+        proposedBy: d.ruleHit.rule ? `rule ${d.ruleHit.rule.id}` : (d.modelMeta?.model ?? 'stub'),
+        reasoning: d.modelMeta?.reasoning ?? d.ruleHit.rule?.description ?? null,
+        alternatives: d.alternatives ?? [],
+
+        failedChecks: failed.map((r) => ({ id: r.id, detail: r.detail })),
+        evidence: (d.modelMeta?.transcript ?? []).map((t) => ({
+            tool: t.tool, args: t.args, result: t.result, error: t.error ?? null
+        })),
+
+        // Retained for the calibrator. Not for the reviewer.
+        confidence: d.confidence,
+        rawScore: d.raw,
+
+        receiptHash: d.receipt?.this_hash ?? null,
+        queuedAt: Date.now(),
+        resolvedAt: null,
+        resolution: null,
+        edits: [],
+        finalAccount: null
+    };
+}
+
 export function createHarness(opts = {}) {
     // `restore` is a snapshot from harness-store. Anything it supplies wins
     // over the seed options, so a reload continues where the tenant left off
@@ -941,6 +1028,10 @@ export function createHarness(opts = {}) {
         openPeriods: opts.openPeriods ?? ['2026-07'],
         calibration: r?.calibration ?? { points: [], n: 0, ece: null },
         feedback: r?.feedback ?? [],
+        // Items parked awaiting a human. This is the substrate of the Approval
+        // Inbox, and therefore of the label harvest: an item only produces a
+        // training label when a person actually resolves it.
+        queue: r?.queue ?? [],
         // Optional. When absent, step 4 uses the built-in deterministic stub,
         // so the harness runs identically with no model and no network.
         gateway: opts.gateway ?? null,
@@ -967,9 +1058,64 @@ export function createHarness(opts = {}) {
             if (d.validators.allPassed && d.resolved.vendor && d.resolved.invoiceNo) {
                 state.postedKeys.add(`${d.resolved.vendor}|${d.resolved.invoiceNo}`);
             }
+            // Anything not executed autonomously lands in the review queue,
+            // carrying enough context for a reviewer to decide without
+            // re-running the pipeline.
+            if (d.route === 'QueuedForReview' || d.route === 'Escalated') {
+                state.queue.push(toQueueItem(d, workItem));
+            }
             onChange();
             return d;
         },
+
+        /**
+         * A reviewer resolves a queued item. This is the only path by which a
+         * training label is created — which is why the inbox is on the
+         * critical path rather than being presentation.
+         */
+        resolve(workItemId, kind, edits = []) {
+            const i = state.queue.findIndex((q) => q.workItemId === workItemId && !q.resolvedAt);
+            if (i === -1) return null;
+            const item = state.queue[i];
+            const decision = state.decisions.find((d) => d.workItemId === workItemId);
+
+            const diffs = edits
+                .filter((e) => String(e.to ?? '') !== String(e.from ?? ''))
+                .map((e) => ({ field: e.field, from: e.from ?? null, to: e.to ?? null }));
+
+            item.resolvedAt = Date.now();
+            item.resolution = kind;
+            item.edits = diffs;
+            item.reviewLatencyMs = item.resolvedAt - item.queuedAt;
+            if (diffs.length) {
+                const acct = diffs.find((d) => d.field === 'account');
+                if (acct) item.finalAccount = acct.to;
+            }
+
+            // Feedback needs the original decision for its raw score and
+            // context. A queued item restored from storage has no live
+            // decision object, so fall back to the snapshot on the item.
+            const f = decision
+                ? recordFeedback(decision, kind, diffs)
+                : {
+                    feedbackId: `fb-${workItemId}`, workItemId, kind,
+                    actorId: 'human.ann', fieldDiffs: diffs,
+                    context: { vendor: item.vendor, description: item.description,
+                               proposedAccount: item.proposedAccount, confidence: item.confidence },
+                    correct: kind === 'APPROVED', rawScore: item.rawScore
+                };
+
+            state.feedback.push(f);
+            state.rules = policeRules(state.rules, state.feedback);
+            state.calibration = fitIsotonic(
+                state.feedback.map((x) => ({ x: x.rawScore, y: x.correct ? 1 : 0 }))
+            );
+            onChange();
+            return { item, feedback: f };
+        },
+
+        get queue() { return state.queue.filter((q) => !q.resolvedAt); },
+        get resolved() { return state.queue.filter((q) => q.resolvedAt); },
         feedback(decision, kind, diffs) {
             const f = recordFeedback(decision, kind, diffs);
             state.feedback.push(f);
