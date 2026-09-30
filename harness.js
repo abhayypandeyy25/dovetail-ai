@@ -196,12 +196,24 @@ export const GENESIS = '0'.repeat(64);
  * event's prev_hash must equal its predecessor's this_hash, so altering any
  * event breaks every link after it and none before.
  */
-export function createChain(entityId = 'CA') {
+export function createChain(entityId = 'CA', restore = null) {
     const events = [];
     let lastHash = GENESIS;
     let seq = 0;
 
+    // Rehydration from storage. The saved events are trusted as bytes and
+    // re-verified, never re-signed: if canonicalization has changed since they
+    // were written, verify() must FAIL rather than silently repair the chain.
+    // A chain that quietly fixes itself proves nothing.
+    if (restore?.events?.length) {
+        for (const e of restore.events) events.push(Object.freeze(e));
+        const last = events[events.length - 1];
+        lastHash = last.this_hash;
+        seq = Number(last.chain_seq);
+    }
+
     return {
+        entityId,
         get events() { return events.slice(); },
         get head() { return lastHash; },
         get length() { return events.length; },
@@ -593,7 +605,10 @@ export function policyGate(candidate, resolved, confidence, ctx) {
 // 9. The pipeline
 // -----------------------------------------------------------------------------
 
-export function runPipeline(workItem, state) {
+// Async because step 4 may cross the network. Every other step stays
+// synchronous and pure, so the only await in the pipeline is the model call —
+// which makes the cost and latency attributable to exactly one place.
+export async function runPipeline(workItem, state) {
     const trace = [];
     const step = (n, name, detail) => trace.push({ n, name, ...detail });
 
@@ -635,7 +650,45 @@ export function runPipeline(workItem, state) {
     // --- 4. Model, only for what rules did not cover.
     let proposals = {};
     let modelCalled = false;
-    if (ruleHit.coverage !== 'full') {
+    let modelMeta = null;
+    let modelUsage = null;
+
+    if (ruleHit.coverage === 'full') {
+        step(4, 'Model', { detail: 'SKIPPED — a rule covered every required field', skipped: true });
+    } else if (state.gateway) {
+        // Real adapter behind the gateway: budgets, allowlist and circuit
+        // breaker are enforced there, and a refusal is always explicit.
+        const out = await state.gateway.propose(candidate, state, candidate.taskClass);
+        if (out.skipped) {
+            step(4, 'Model', {
+                detail: `NOT CALLED — ${out.skipped}${out.error ? ': ' + out.error : ''}`,
+                skipped: true, gatewayRefusal: out.skipped
+            });
+            // A gateway refusal is not a coding decision. The item goes to a
+            // human with the reason stated, never posted on a guess.
+            state.lastGatewayRefusal = out.skipped;
+        } else {
+            modelCalled = true;
+            proposals = out.fields;
+            modelMeta = out.meta;
+            modelUsage = out.usage;
+            const prov = enforceAmountProvenance(proposals, candidate);
+            if (!prov.ok) {
+                step(4, 'Model', { detail: `REJECTED — ${prov.reason}`, rejected: true });
+                proposals.amount_minor = null;
+            } else {
+                step(4, 'Model', {
+                    detail: `${out.meta.provider}/${out.meta.model} → ` +
+                            `${proposals.account?.value ?? 'no account'}` +
+                            (out.meta.reasoning ? ` — "${out.meta.reasoning}"` : '') +
+                            ` · ${out.usage.inputTokens}+${out.usage.outputTokens} tok` +
+                            ` · $${out.usage.costUsd.toFixed(5)} · ${out.meta.latencyMs}ms`,
+                    meta: out.meta, usage: out.usage
+                });
+            }
+        }
+    } else {
+        // No gateway configured — the built-in deterministic stub.
         modelCalled = true;
         proposals = modelPropose(candidate, ruleHit.fields, state.coa);
         const prov = enforceAmountProvenance(proposals, candidate);
@@ -644,12 +697,10 @@ export function runPipeline(workItem, state) {
             proposals.amount_minor = null;
         } else {
             step(4, 'Model', {
-                detail: `proposed ${Object.keys(proposals).length} field(s); ` +
+                detail: `stub → ${proposals.account?.value ?? 'no account'}; ` +
                         `amounts restricted to extraction provenance`
             });
         }
-    } else {
-        step(4, 'Model', { detail: 'SKIPPED — a rule covered every required field', skipped: true });
     }
 
     // --- Resolve final values: rules win over model.
@@ -730,8 +781,12 @@ export function runPipeline(workItem, state) {
         reason: gate.reason,
         confidence: ratio(confidence),
         policy: gate.policyVersion,
-        prompt: modelCalled ? 'ap/code_bill@v7' : null,
-        model: modelCalled ? 'stub-deterministic@1' : null,
+        // The reproducibility triple. Without these a decision cannot be
+        // re-created years later, which is what an auditor will ask for.
+        prompt: modelCalled ? (modelMeta?.promptRef ?? 'ap/code_bill@v1') : null,
+        model: modelCalled ? (modelMeta?.model ?? 'stub-deterministic@1') : null,
+        provider: modelCalled ? (modelMeta?.provider ?? 'stub') : null,
+        cost_usd: modelUsage ? modelUsage.costUsd.toFixed(6) : '0.000000',
         rule: ruleHit.rule?.id ?? null,
         account: resolved.account,
         amount: dec(resolved.amount_minor)
@@ -753,6 +808,7 @@ export function runPipeline(workItem, state) {
 
     return {
         workItemId: workItem.id, candidate, ruleHit, modelCalled,
+        modelMeta, modelUsage,
         resolved, validators, features, raw, confidence,
         gate, route: gate.route, command, receipt: event, trace
     };
@@ -858,22 +914,39 @@ export function policeRules(rules, feedbackEvents) {
 // -----------------------------------------------------------------------------
 
 export function createHarness(opts = {}) {
+    // `restore` is a snapshot from harness-store. Anything it supplies wins
+    // over the seed options, so a reload continues where the tenant left off
+    // rather than resetting to the demo's starting conditions.
+    const r = opts.restore ?? null;
+
     const state = {
-        chain: createChain(opts.entityId ?? 'CA'),
-        rules: opts.rules ?? [],
+        chain: createChain(opts.entityId ?? 'CA', r?.chain ?? null),
+        rules: r?.rules ?? opts.rules ?? [],
         coa: opts.coa ?? [],
         vendorHistory: opts.vendorHistory ?? {},
-        postedKeys: new Set(opts.postedKeys ?? []),
+        postedKeys: new Set(r?.postedKeys ?? opts.postedKeys ?? []),
         openPeriods: opts.openPeriods ?? ['2026-07'],
-        calibration: { points: [], n: 0, ece: null },
-        feedback: [],
-        decisions: []
+        calibration: r?.calibration ?? { points: [], n: 0, ece: null },
+        feedback: r?.feedback ?? [],
+        // Optional. When absent, step 4 uses the built-in deterministic stub,
+        // so the harness runs identically with no model and no network.
+        gateway: opts.gateway ?? null,
+        decisions: [],
+        // Decisions are not fully rehydrated (their traces hold closures), so
+        // prior counts are carried separately and added to live stats.
+        priorDecisions: r?.decisions ?? []
     };
+
+    // Called after any state mutation so the caller can persist. Set by
+    // attachStore(); a no-op until then.
+    let onChange = () => {};
 
     return {
         state,
-        process(workItem) {
-            const d = runPipeline(workItem, state);
+        /** Wire a persistence callback. Returns the harness for chaining. */
+        onChange(fn) { onChange = fn || (() => {}); return this; },
+        async process(workItem) {
+            const d = await runPipeline(workItem, state);
             state.decisions.push(d);
             // Register the vendor + invoice number once an item has been
             // booked, so a re-submission of the same invoice is caught by
@@ -881,6 +954,7 @@ export function createHarness(opts = {}) {
             if (d.validators.allPassed && d.resolved.vendor && d.resolved.invoiceNo) {
                 state.postedKeys.add(`${d.resolved.vendor}|${d.resolved.invoiceNo}`);
             }
+            onChange();
             return d;
         },
         feedback(decision, kind, diffs) {
@@ -891,27 +965,41 @@ export function createHarness(opts = {}) {
             state.calibration = fitIsotonic(
                 state.feedback.map((x) => ({ x: x.rawScore, y: x.correct ? 1 : 0 }))
             );
+            onChange();
             return f;
         },
         mine() { return mineRules(state.feedback, state.rules); },
         confirm(rule) {
             const active = confirmRule(rule);
             state.rules = [...state.rules, active];
+            onChange();
             return active;
         },
         verify() { return state.chain.verify(); },
         stats() {
-            const d = state.decisions;
+            // Live decisions plus any carried over from a previous session, so
+            // the counters reflect the tenant's whole history rather than this
+            // page load.
+            const live = state.decisions.map((x) => ({
+                route: x.route, modelCalled: x.modelCalled,
+                fullRule: x.ruleHit.coverage === 'full'
+            }));
+            const prior = state.priorDecisions.map((x) => ({
+                route: x.route, modelCalled: x.modelCalled, fullRule: !!x.ruleId
+            }));
+            const all = [...prior, ...live];
+            const count = (p) => all.filter(p).length;
             return {
-                processed: d.length,
-                autoExecuted: d.filter((x) => x.route === 'AutoExecuted').length,
-                queued: d.filter((x) => x.route === 'QueuedForReview').length,
-                escalated: d.filter((x) => x.route === 'Escalated').length,
-                modelCalls: d.filter((x) => x.modelCalled).length,
-                ruleCovered: d.filter((x) => x.ruleHit.coverage === 'full').length,
+                processed: all.length,
+                autoExecuted: count((x) => x.route === 'AutoExecuted'),
+                queued: count((x) => x.route === 'QueuedForReview'),
+                escalated: count((x) => x.route === 'Escalated'),
+                modelCalls: count((x) => x.modelCalled),
+                ruleCovered: count((x) => x.fullRule),
                 chainLength: state.chain.length,
                 labels: state.calibration.n,
-                ece: state.calibration.ece
+                ece: state.calibration.ece,
+                restored: prior.length
             };
         }
     };
