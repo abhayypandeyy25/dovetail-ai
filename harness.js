@@ -677,13 +677,22 @@ export async function runPipeline(workItem, state) {
                 step(4, 'Model', { detail: `REJECTED — ${prov.reason}`, rejected: true });
                 proposals.amount_minor = null;
             } else {
+                const m = out.meta;
+                const loop = m.turns
+                    ? ` · ${m.turns} turn${m.turns > 1 ? 's' : ''}, ${m.toolCalls} tool call${m.toolCalls === 1 ? '' : 's'}` +
+                      (m.exhausted ? ' · BUDGET EXHAUSTED — no proposal' : '')
+                    : '';
                 step(4, 'Model', {
-                    detail: `${out.meta.provider}/${out.meta.model} → ` +
+                    detail: `${m.provider}/${m.model} → ` +
                             `${proposals.account?.value ?? 'no account'}` +
-                            (out.meta.reasoning ? ` — "${out.meta.reasoning}"` : '') +
+                            (m.reasoning ? ` — "${m.reasoning}"` : '') +
                             ` · ${out.usage.inputTokens}+${out.usage.outputTokens} tok` +
-                            ` · $${out.usage.costUsd.toFixed(5)} · ${out.meta.latencyMs}ms`,
-                    meta: out.meta, usage: out.usage
+                            ` · $${out.usage.costUsd.toFixed(5)}` + loop,
+                    meta: m, usage: out.usage,
+                    // The tool transcript is part of the audit record: an
+                    // auditor asking "what did it look at before deciding"
+                    // gets an answer from stored data, not a re-run.
+                    transcript: m.transcript ?? null
                 });
             }
         }
@@ -787,6 +796,10 @@ export async function runPipeline(workItem, state) {
         model: modelCalled ? (modelMeta?.model ?? 'stub-deterministic@1') : null,
         provider: modelCalled ? (modelMeta?.provider ?? 'stub') : null,
         cost_usd: modelUsage ? modelUsage.costUsd.toFixed(6) : '0.000000',
+        // Bounded-loop evidence, so a receipt records not just what was decided
+        // but how much investigation it took to decide it.
+        tool_calls: modelMeta?.toolCalls != null ? String(modelMeta.toolCalls) : null,
+        turns: modelMeta?.turns != null ? String(modelMeta.turns) : null,
         rule: ruleHit.rule?.id ?? null,
         account: resolved.account,
         amount: dec(resolved.amount_minor)

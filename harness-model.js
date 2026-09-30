@@ -37,8 +37,13 @@
 export function buildTools(ctx) {
     return {
         search_accounts: {
-            description: 'Search the chart of accounts by keyword. Returns candidate accounts.',
-            schema: { query: 'string' },
+            description: 'Search the chart of accounts by keyword. Returns candidate accounts, ' +
+                'marking any that are control accounts and therefore unusable.',
+            input_schema: {
+                type: 'object',
+                properties: { query: { type: 'string', description: 'Keyword, e.g. "telecom"' } },
+                required: ['query']
+            },
             run: ({ query }) => {
                 const q = String(query || '').toLowerCase();
                 return ctx.coa
@@ -51,7 +56,11 @@ export function buildTools(ctx) {
         },
         vendor_history: {
             description: 'How this vendor has been coded before, and how consistently.',
-            schema: { vendor: 'string' },
+            input_schema: {
+                type: 'object',
+                properties: { vendor: { type: 'string' } },
+                required: ['vendor']
+            },
             run: ({ vendor }) => {
                 const h = ctx.vendorHistory?.[vendor];
                 return h ? { seen: h.count, agreement: h.agreement, usualAccount: h.account ?? null }
@@ -60,11 +69,105 @@ export function buildTools(ctx) {
         },
         firm_rules: {
             description: 'Learned firm rules that mention this vendor.',
-            schema: { vendor: 'string' },
+            input_schema: {
+                type: 'object',
+                properties: { vendor: { type: 'string' } },
+                required: ['vendor']
+            },
             run: ({ vendor }) => ctx.rules
                 .filter((r) => r.status === 'ACTIVE' && r.predicate?.vendor === vendor)
                 .map((r) => ({ id: r.id, description: r.description, accuracy: r.rollingAccuracy }))
         }
+    };
+}
+
+/** Provider-neutral specs. Every tool here is READ-ONLY by construction. */
+export function toolSpecs(tools) {
+    return Object.entries(tools).map(([name, t]) => ({
+        name, description: t.description, input_schema: t.input_schema
+    }));
+}
+
+// -----------------------------------------------------------------------------
+// The bounded tool loop
+// -----------------------------------------------------------------------------
+// This is what separates an agent from a classifier: the model can investigate
+// before deciding — check how a vendor was coded before, search the chart,
+// look for a firm rule — rather than answering from a single fixed prompt.
+//
+// The bounds matter as much as the loop. The architecture is explicit that no
+// model may extend its own graph, so both limits are enforced HERE, in the
+// caller, not requested in the prompt:
+//
+//     MAX_TOOL_CALLS = 8      MAX_TURNS = 3
+//
+// Exhausting either produces NO PROPOSAL — never a guess assembled from
+// partial information. A no-proposal routes to a human, which is the correct
+// outcome for "I could not work this out in the budget I was given".
+
+export const MAX_TOOL_CALLS = 8;
+export const MAX_TURNS = 3;
+
+export async function runToolLoop(candidate, ctx, adapter) {
+    const tools = buildTools(ctx);
+    const specs = toolSpecs(tools);
+    const transcript = [];
+    let toolCalls = 0;
+    let turns = 0;
+    let usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+    const messages = [{ role: 'user', content: renderUserPrompt(candidate, ctx) }];
+
+    while (turns < MAX_TURNS) {
+        turns += 1;
+        const reply = await adapter.converse(messages, specs);
+
+        usage.inputTokens += reply.usage?.inputTokens ?? 0;
+        usage.outputTokens += reply.usage?.outputTokens ?? 0;
+        usage.costUsd += reply.usage?.costUsd ?? 0;
+
+        if (reply.toolCalls?.length) {
+            const results = [];
+            for (const call of reply.toolCalls) {
+                if (toolCalls >= MAX_TOOL_CALLS) {
+                    transcript.push({ turn: turns, tool: call.name, stopped: 'MAX_TOOL_CALLS' });
+                    break;
+                }
+                const tool = tools[call.name];
+                if (!tool) {
+                    // A model naming a tool that does not exist is a real
+                    // failure mode. Say so rather than ignoring it.
+                    transcript.push({ turn: turns, tool: call.name, error: 'unknown tool' });
+                    results.push({ id: call.id, name: call.name, content: { error: 'unknown tool' } });
+                    continue;
+                }
+                toolCalls += 1;
+                let result;
+                try { result = tool.run(call.args ?? {}); }
+                catch (e) { result = { error: String(e.message ?? e) }; }
+                transcript.push({ turn: turns, tool: call.name, args: call.args, result });
+                results.push({ id: call.id, name: call.name, content: result });
+            }
+            messages.push({ role: 'assistant', toolCalls: reply.toolCalls, content: reply.text ?? '' });
+            messages.push({ role: 'tool', results });
+            continue;
+        }
+
+        // A final answer.
+        return {
+            fields: { account: { value: reply.answer?.account ?? null, from: adapter.id } },
+            transcript, turns, toolCalls, usage,
+            reasoning: reply.answer?.reasoning ?? null,
+            exhausted: false
+        };
+    }
+
+    // Budget spent without a conclusion. Deliberately NOT a best guess.
+    return {
+        fields: { account: { value: null, from: `${adapter.id}:exhausted` } },
+        transcript, turns, toolCalls, usage,
+        reasoning: `no conclusion within ${MAX_TURNS} turns / ${MAX_TOOL_CALLS} tool calls`,
+        exhausted: true
     };
 }
 
@@ -138,6 +241,61 @@ export function stubAdapter() {
         id: 'stub-deterministic@1',
         provider: 'stub',
         needsKey: false,
+
+        /**
+         * Deterministic multi-turn tool use, so the loop is demonstrable with
+         * no network and no key. It follows the sequence a careful accountant
+         * would: check the vendor's history and any firm rule first, fall back
+         * to searching the chart, and decline rather than guess.
+         */
+        async converse(messages, _specs) {
+            const turn = messages.filter((m) => m.role === 'tool').length;
+            const first = messages[0]?.content ?? '';
+            const vendor = (first.match(/^vendor: (.*)$/m) ?? [])[1] ?? '';
+            const desc = ((first.match(/^description: (.*)$/m) ?? [])[1] ?? '').toLowerCase();
+            const usage = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+
+            if (turn === 0) {
+                return {
+                    usage,
+                    toolCalls: [
+                        { id: 't1', name: 'vendor_history', args: { vendor } },
+                        { id: 't2', name: 'firm_rules', args: { vendor } }
+                    ]
+                };
+            }
+
+            const seen = messages.filter((m) => m.role === 'tool').flatMap((m) => m.results);
+            const hist = seen.find((r) => r.name === 'vendor_history')?.content;
+            const rules = seen.find((r) => r.name === 'firm_rules')?.content;
+
+            if (turn === 1) {
+                // History or a firm rule settles it without further lookup.
+                if (rules?.length) {
+                    return { usage, answer: { account: null,
+                        reasoning: `firm rule ${rules[0].id} already covers this vendor` } };
+                }
+                if (hist?.usualAccount) {
+                    return { usage, answer: { account: hist.usualAccount,
+                        reasoning: `vendor coded to ${hist.usualAccount} in ${hist.seen} prior bills` } };
+                }
+                // Otherwise search the chart using the strongest keyword.
+                const token = desc.split(/[^a-z]+/).filter((w) => w.length > 4)[0] ?? desc.slice(0, 8);
+                return { usage, toolCalls: [{ id: 't3', name: 'search_accounts', args: { query: token } }] };
+            }
+
+            const found = seen.find((r) => r.name === 'search_accounts')?.content ?? [];
+            // Control accounts are visible in the results and deliberately not
+            // selected — the model declining here is the behaviour we want,
+            // with V3_CONTROL as the backstop if it ever does select one.
+            const usable = found.filter((a) => !a.control);
+            return usable.length
+                ? { usage, answer: { account: usable[0].account,
+                    reasoning: `chart search matched ${usable[0].account} ${usable[0].name}` } }
+                : { usage, answer: { account: null,
+                    reasoning: found.length ? 'only control accounts matched' : 'no account matched' } };
+        },
+
         async propose(candidate, ctx) {
             const t0 = performance.now();
             const desc = (candidate.extraction.description?.value ?? '').toLowerCase();
@@ -166,6 +324,58 @@ export function ollamaAdapter({ model = 'qwen2.5:7b', endpoint = 'http://localho
         id: `ollama:${model}`,
         provider: 'ollama',
         needsKey: false,
+
+        async converse(messages, specs) {
+            const p = PROMPTS['ap/code_bill@v1'];
+            const wire = [{ role: 'system', content: p.system +
+                '\n\nUse the tools to check vendor history and the chart of accounts before ' +
+                'deciding. When ready, reply with JSON only: {"account": "...", "reasoning": "..."}' }];
+            for (const m of messages) {
+                if (m.role === 'user') wire.push({ role: 'user', content: m.content });
+                else if (m.role === 'assistant') {
+                    wire.push({ role: 'assistant', content: m.content ?? '',
+                        tool_calls: (m.toolCalls ?? []).map((tc) => ({
+                            function: { name: tc.name, arguments: tc.args ?? {} } })) });
+                } else if (m.role === 'tool') {
+                    for (const r of m.results) {
+                        wire.push({ role: 'tool', content: JSON.stringify(r.content) });
+                    }
+                }
+            }
+
+            const res = await fetch(`${endpoint}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model, stream: false, options: { temperature: 0 },
+                    tools: specs.map((s) => ({
+                        type: 'function',
+                        function: { name: s.name, description: s.description, parameters: s.input_schema }
+                    })),
+                    messages: wire
+                })
+            });
+            if (!res.ok) throw new Error(`ollama ${res.status}: ${await res.text()}`);
+            const json = await res.json();
+            const usage = {
+                inputTokens: json.prompt_eval_count ?? 0,
+                outputTokens: json.eval_count ?? 0,
+                costUsd: 0
+            };
+            const calls = json.message?.tool_calls ?? [];
+            if (calls.length) {
+                return { usage, text: json.message?.content ?? '',
+                    toolCalls: calls.map((c, i) => ({
+                        id: `o${i}`, name: c.function?.name,
+                        // Ollama sometimes returns arguments as a JSON string.
+                        args: typeof c.function?.arguments === 'string'
+                            ? (parseStrict(c.function.arguments) ?? {})
+                            : (c.function?.arguments ?? {})
+                    })) };
+            }
+            return { usage, answer: parseStrict(json.message?.content) };
+        },
+
         async propose(candidate, ctx) {
             const t0 = performance.now();
             const p = PROMPTS['ap/code_bill@v1'];
@@ -217,10 +427,74 @@ const PRICING = {                         // USD per million tokens, Sept 2026
 };
 
 export function anthropicAdapter({ apiKey, model = 'claude-haiku-4-5-20251001' } = {}) {
+    const rate = PRICING[model] ?? { in: 0, out: 0 };
+    const cost = (u) => ((u?.input_tokens ?? 0) / 1e6) * rate.in
+                      + ((u?.output_tokens ?? 0) / 1e6) * rate.out;
+
     return {
         id: `anthropic:${model}`,
         provider: 'anthropic',
         needsKey: true,
+
+        async converse(messages, specs) {
+            if (!apiKey) throw new Error('no API key supplied');
+            const p = PROMPTS['ap/code_bill@v1'];
+
+            // Translate the neutral transcript into Anthropic's content blocks.
+            const wire = [];
+            for (const m of messages) {
+                if (m.role === 'user') { wire.push({ role: 'user', content: m.content }); continue; }
+                if (m.role === 'assistant') {
+                    const blocks = [];
+                    if (m.content) blocks.push({ type: 'text', text: m.content });
+                    for (const tc of m.toolCalls ?? []) {
+                        blocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.args ?? {} });
+                    }
+                    wire.push({ role: 'assistant', content: blocks });
+                    continue;
+                }
+                if (m.role === 'tool') {
+                    wire.push({ role: 'user', content: m.results.map((r) => ({
+                        type: 'tool_result', tool_use_id: r.id, content: JSON.stringify(r.content)
+                    })) });
+                }
+            }
+
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model, max_tokens: 700, temperature: 0,
+                    system: p.system + '\n\nUse the tools to check vendor history and the chart ' +
+                            'of accounts before deciding. When ready, reply with JSON only: ' +
+                            '{"account": "...", "reasoning": "..."}',
+                    tools: specs, messages: wire
+                })
+            });
+            if (!res.ok) throw new Error(`anthropic ${res.status}: ${await res.text()}`);
+            const json = await res.json();
+            const usage = {
+                inputTokens: json.usage?.input_tokens ?? 0,
+                outputTokens: json.usage?.output_tokens ?? 0,
+                costUsd: cost(json.usage)
+            };
+
+            const toolUse = (json.content ?? []).filter((c) => c.type === 'tool_use');
+            const text = (json.content ?? []).filter((c) => c.type === 'text')
+                .map((c) => c.text).join('');
+
+            if (toolUse.length) {
+                return { usage, text,
+                    toolCalls: toolUse.map((t) => ({ id: t.id, name: t.name, args: t.input })) };
+            }
+            return { usage, answer: parseStrict(text) };
+        },
+
         async propose(candidate, ctx) {
             if (!apiKey) throw new Error('no API key supplied');
             const t0 = performance.now();
@@ -280,7 +554,7 @@ function parseStrict(text) {
 // the model allowlist, per-tenant budgets and cost metering enforceable rather
 // than advisory.
 
-export function createGateway({ adapter, dailyCapUsd = 1.0, allowlist = null } = {}) {
+export function createGateway({ adapter, dailyCapUsd = 1.0, allowlist = null, useTools = true } = {}) {
     let spend = 0;
     let calls = 0;
     let failures = 0;
@@ -289,7 +563,8 @@ export function createGateway({ adapter, dailyCapUsd = 1.0, allowlist = null } =
     return {
         get adapter() { return adapter; },
         setAdapter(a) { adapter = a; failures = 0; circuitOpen = false; },
-        get usage() { return { spend, calls, failures, circuitOpen, dailyCapUsd }; },
+        get usage() { return { spend, calls, failures, circuitOpen, dailyCapUsd, useTools }; },
+        setUseTools(v) { useTools = !!v; },
 
         async propose(candidate, ctx, taskClass = 'ap.code_bill') {
             if (allowlist && !allowlist.includes(taskClass)) {
@@ -301,11 +576,31 @@ export function createGateway({ adapter, dailyCapUsd = 1.0, allowlist = null } =
             if (circuitOpen) return { skipped: 'DEGRADED' };
 
             try {
-                const out = await adapter.propose(candidate, ctx);
+                // Tool loop when the adapter supports conversation; otherwise
+                // the single-shot path. Both return the same shape.
+                const useLoop = useTools && typeof adapter.converse === 'function';
+                const out = useLoop
+                    ? await runToolLoop(candidate, ctx, adapter)
+                    : await adapter.propose(candidate, ctx);
+
                 spend += out.usage.costUsd;
                 calls += 1;
                 failures = 0;
-                return out;
+
+                return useLoop
+                    ? {
+                        fields: out.fields,
+                        usage: out.usage,
+                        meta: {
+                            model: adapter.id, provider: adapter.provider,
+                            promptRef: 'ap/code_bill@v1',
+                            reasoning: out.reasoning,
+                            toolCalls: out.toolCalls, turns: out.turns,
+                            transcript: out.transcript, exhausted: out.exhausted,
+                            latencyMs: null
+                        }
+                    }
+                    : out;
             } catch (err) {
                 failures += 1;
                 // Three consecutive failures opens the circuit; rule-covered

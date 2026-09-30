@@ -120,6 +120,10 @@ tr:last-child td{border-bottom:none}
         <option value="anthropic">Anthropic — paid, needs a key</option>
       </select>
       <div id="modelOpts"></div>
+      <label style="display:flex;align-items:center;gap:7px;margin-top:10px;cursor:pointer">
+        <input type="checkbox" id="useTools" checked style="width:auto;margin:0">
+        <span>Bounded tool loop — max 3 turns, 8 tool calls</span>
+      </label>
       <div id="modelNote"></div>
     </div>
 
@@ -296,6 +300,7 @@ function renderModelOpts(){
   renderStats();
 }
 $('adapter').onchange=renderModelOpts;
+$('useTools').onchange=()=>{ gateway.setUseTools($('useTools').checked); renderStats(); };
 renderModelOpts();
 
 // --- rendering ---------------------------------------------------------------
@@ -321,6 +326,7 @@ function renderTrace(d,label,note){
     return `<div class="step"><div class="n ${cls}">${s.n}</div>
       <div style="flex:1;min-width:0"><div class="sname">${esc(s.name)}</div>
       <div class="sdet">${esc(s.detail)}</div>
+      ${s.n===4&&s.transcript?toolTable(s.transcript):''}
       ${s.n===5?validatorTable(s.results):''}
       ${s.n===6?featureTable(d):''}
       ${s.n===7?gateBox(d):''}
@@ -339,6 +345,22 @@ async function run(id){
   const d=await harness.process(w);
   renderTrace(d,w.label,`${money(w.amt)} CAD · ${w.note}`);
   renderStats();
+}
+
+function toolTable(tr){
+  if(!tr.length) return '';
+  const rows=tr.map(t=>{
+    const res = t.error ? `<span style="color:var(--red)">${esc(t.error)}</span>`
+      : t.stopped ? `<span style="color:var(--red)">stopped: ${esc(t.stopped)}</span>`
+      : esc(JSON.stringify(t.result)).slice(0,120);
+    return `<tr><td class="mono" style="font-size:10.5px">${t.turn}</td>
+      <td class="mono" style="font-size:10.5px;color:var(--blue)">${esc(t.tool)}</td>
+      <td style="color:var(--grey);font-size:10.5px">${esc(JSON.stringify(t.args??{}))}</td>
+      <td style="color:var(--grey);font-size:10.5px">${res}</td></tr>`}).join('');
+  return `<table><thead><tr><th>Turn</th><th>Tool</th><th>Args</th><th>Result</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="note">What the model looked at before deciding. Bounds are enforced by the caller,
+    not requested in the prompt — no model can extend its own graph.</div>`;
 }
 
 function validatorTable(rs){
