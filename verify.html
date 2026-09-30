@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dovetail — Audit Chain Verifier</title>
+<!--
+  ===========================================================================
+  STANDALONE VERIFIER — contains no Dovetail code.
+  ===========================================================================
+  A system that verifies itself proves nothing. This page exists so an auditor
+  can check a Dovetail chain WITHOUT trusting the software that produced it.
+
+  Three deliberate constraints:
+
+    1. No import from harness.js, or anything else. If this page shared the
+       canonicalizer that wrote the chain, a bug in that canonicalizer would
+       cancel itself out and the check would always pass.
+
+    2. Hashing uses the BROWSER'S OWN WebCrypto SHA-256, not an implementation
+       shipped with Dovetail. Two independent implementations agreeing is the
+       evidence; one implementation agreeing with itself is not.
+
+    3. Works from file:// with no server and no network. Save this page, open
+       it offline, drop in a bundle. Nothing is transmitted anywhere.
+
+  Single file, no dependencies, no build step, deliberately.
+  ===========================================================================
+-->
+<style>
+:root{--navy:#12284B;--blue:#1F4E79;--teal:#2DD4BF;--bg:#F4F7FC;--line:#e3e9f2;
+  --grey:#5B6472;--red:#B42318;--redbg:#FDECEC;--green:#1E7A46;--greenbg:#E8F6EE;
+  --amber:#B4690E;--amberbg:#FFF6E5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#222;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+code,.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace}
+header{background:var(--navy);color:#fff;padding:18px 26px}
+h1{font-size:19px;margin:0;font-weight:600}
+.sub{font-size:12px;color:#8fa3c0;margin-top:3px}
+.wrap{max-width:1000px;margin:0 auto;padding:22px 26px 70px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+h2{font-size:15px;color:var(--navy);margin:0 0 4px}
+.hint{font-size:12px;color:var(--grey);line-height:1.6;margin-bottom:14px}
+.drop{border:2px dashed #cbd5e6;border-radius:11px;padding:34px 20px;text-align:center;
+  color:var(--grey);font-size:13px;cursor:pointer;transition:.15s;background:#fbfcfe}
+.drop:hover,.drop.over{border-color:var(--teal);background:#f2fbfa;color:var(--navy)}
+textarea{width:100%;min-height:110px;font-family:ui-monospace,monospace;font-size:11px;
+  border:1px solid var(--line);border-radius:9px;padding:10px;resize:vertical}
+button{font:inherit;font-size:13px;padding:9px 15px;border-radius:8px;cursor:pointer;
+  border:1px solid var(--line);background:#fff}
+button:hover{border-color:var(--blue)}
+button.primary{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
+button.primary:hover{background:var(--blue)}
+button.danger{background:#fff;color:var(--red);border-color:#f0c6c2}
+.row{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.verdict{padding:16px 18px;border-radius:11px;margin-bottom:15px;font-size:14px;line-height:1.6}
+.verdict.ok{background:var(--greenbg);border:1px solid #b8e6cb;color:var(--green)}
+.verdict.bad{background:var(--redbg);border:1px solid #f3c4c0;color:var(--red)}
+.verdict b{display:block;font-size:17px;margin-bottom:5px}
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px}
+th{text-align:left;color:var(--grey);font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.4px;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid #f4f6fa;vertical-align:top}
+td.h{font-family:ui-monospace,monospace;font-size:10px;color:var(--grey);word-break:break-all}
+tr.broken td{background:var(--redbg)}
+.chk{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f4f6fa;font-size:12.5px;align-items:flex-start}
+.chk:last-child{border-bottom:none}
+.mark{width:18px;flex:none;font-weight:700}
+.mark.ok{color:var(--green)}.mark.bad{color:var(--red)}
+.note{background:var(--amberbg);border-left:3px solid var(--amber);padding:11px 13px;
+  border-radius:0 8px 8px 0;font-size:12px;line-height:1.6;margin-top:13px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 16px;font-size:12.5px}
+.kv dt{color:var(--grey)}.kv dd{margin:0;font-weight:600;color:var(--navy);word-break:break-all}
+.hide{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Dovetail — Audit Chain Verifier</h1>
+  <div class="sub">Standalone. Contains no Dovetail code. Works offline.</div>
+</header>
+
+<div class="wrap">
+
+  <div class="card">
+    <h2>1 · Load an export bundle</h2>
+    <div class="hint">
+      A bundle is produced by <b>Export bundle</b> in the harness. It holds the event
+      stream as JSONL plus the chain head — no code. Nothing you load here leaves your machine;
+      this page makes no network requests.
+    </div>
+    <div class="drop" id="drop">Drop a bundle here, or click to choose a file</div>
+    <input type="file" id="file" accept=".json,.jsonl,application/json" class="hide">
+    <div class="row">
+      <button id="pasteBtn">Paste JSON instead</button>
+    </div>
+    <div id="pasteWrap" class="hide" style="margin-top:11px">
+      <textarea id="paste" placeholder='{"format":"dovetail-export/v1", ...}'></textarea>
+      <div class="row"><button class="primary" id="loadPaste">Load</button></div>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="card hide" id="tamperCard">
+    <h2>3 · Prove it actually detects tampering</h2>
+    <div class="hint">
+      A verifier that always says "intact" is worthless. These mutate the loaded bundle
+      in memory and re-run the check, so you can confirm it fails when it should.
+      Your file on disk is never modified.
+    </div>
+    <div class="row">
+      <button class="danger" id="tAmount">Alter an amount</button>
+      <button class="danger" id="tDelete">Delete an event</button>
+      <button class="danger" id="tReorder">Swap two events</button>
+      <button class="danger" id="tTruncate">Truncate the chain</button>
+      <button id="tRestore">Restore original</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================================
+// canon/v1 — independently implemented from the specification.
+// ============================================================================
+// RFC 8785 (JCS) with the Dovetail profile. Written from the spec rather than
+// shared with the producer: if both sides used the same code, a canonicalization
+// bug would be invisible because it would apply identically to both.
+//
+// Profile rules that matter here:
+//   C2  object keys sorted by UTF-16 code unit
+//   C4  JSON numbers are forbidden — every numeric is a decimal string
+//   C9  an absent key and a null value are different, and both are preserved
+//   C10 strings NFC-normalised, minimal escaping
+// ----------------------------------------------------------------------------
+function canonString(s){
+  var n = s.normalize('NFC'), out = '"';
+  for (var ch of n) {
+    var c = ch.codePointAt(0);
+    if (ch === '"') out += '\\"';
+    else if (ch === '\\') out += '\\\\';
+    else if (c === 8) out += '\\b';
+    else if (c === 9) out += '\\t';
+    else if (c === 10) out += '\\n';
+    else if (c === 12) out += '\\f';
+    else if (c === 13) out += '\\r';
+    else if (c < 32) out += '\\u' + c.toString(16).padStart(4,'0');
+    else out += ch;
+  }
+  return out + '"';
+}
+function canon(v, depth){
+  depth = depth || 0;
+  if (depth > 12) throw new Error('nesting depth exceeds 12');
+  if (v === null) return 'null';
+  var t = typeof v;
+  if (t === 'boolean') return v ? 'true' : 'false';
+  if (t === 'number') throw new Error('JSON number found — canon/v1 rule C4 forbids numbers');
+  if (t === 'string') return canonString(v);
+  if (Array.isArray(v)) return '[' + v.map(function(x){return canon(x, depth+1)}).join(',') + ']';
+  if (t === 'object') {
+    var keys = Object.keys(v).sort();
+    return '{' + keys.map(function(k){ return canonString(k) + ':' + canon(v[k], depth+1) }).join(',') + '}';
+  }
+  throw new Error('unsupported type ' + t);
+}
+
+// ============================================================================
+// SHA-256 — the BROWSER'S implementation, not one shipped by Dovetail.
+// ============================================================================
+async function sha256(text){
+  var bytes = new TextEncoder().encode(text);
+  var buf = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(buf)].map(function(b){return b.toString(16).padStart(2,'0')}).join('');
+}
+
+var GENESIS = '0'.repeat(64);
+
+// ============================================================================
+// The chain walk
+// ============================================================================
+async function verifyChain(events, claimedHead){
+  var checks = [], rows = [], expect = GENESIS, broken = null;
+
+  if (!events.length) return { ok:false, reason:'bundle contains no events', checks, rows };
+
+  for (var i = 0; i < events.length; i++) {
+    var e = events[i], issue = null, recomputed = null;
+
+    // Gapless sequence. A gap means an event was removed.
+    if (Number(e.chain_seq) !== i + 1) {
+      issue = 'sequence expected ' + (i+1) + ', found ' + e.chain_seq;
+    }
+
+    // Linkage. Each event names its predecessor's hash.
+    if (!issue && e.prev_hash !== expect) {
+      issue = 'prev_hash does not match the previous event';
+    }
+
+    // Recompute from the payload. This is the check that catches edited content:
+    // this_hash and canonical are stripped, the rest is canonicalised afresh.
+    if (!issue) {
+      try {
+        var env = {};
+        for (var k in e) if (k !== 'this_hash' && k !== 'canonical') env[k] = e[k];
+        recomputed = await sha256(canon(env));
+        if (recomputed !== e.this_hash) issue = 'content was altered — recomputed hash differs';
+      } catch (err) {
+        issue = 'could not canonicalise: ' + err.message;
+      }
+    }
+
+    rows.push({ seq: e.chain_seq, type: e.event_type, hash: e.this_hash,
+                recomputed: recomputed, issue: issue, payload: e.payload });
+
+    if (issue && !broken) broken = { at: i + 1, reason: issue };
+    expect = e.this_hash;
+  }
+
+  checks.push({ ok: !rows.some(function(r){return /sequence/.test(r.issue||'')}),
+    label:'Sequence is gapless', detail:'Every event numbered consecutively from 1 — a gap means one was removed' });
+  checks.push({ ok: !rows.some(function(r){return /prev_hash/.test(r.issue||'')}),
+    label:'Links are unbroken', detail:'Each event names its predecessor\'s hash' });
+  checks.push({ ok: !rows.some(function(r){return /altered|canonicalise/.test(r.issue||'')}),
+    label:'Content matches its hash', detail:'Every hash recomputed independently with the browser\'s SHA-256' });
+  checks.push({ ok: events[0].prev_hash === GENESIS,
+    label:'Starts at genesis', detail:'The first event points at the 64-zero constant, proving nothing precedes it' });
+  checks.push({ ok: !claimedHead || claimedHead === events[events.length-1].this_hash,
+    label:'Nothing is missing from the end',
+    detail:'Computed head matches the independently recorded value — a truncated chain is internally valid, so this is the only check that catches it' });
+
+  return { ok: !broken, broken: broken, checks: checks, rows: rows, head: events[events.length-1].this_hash };
+}
+
+// ============================================================================
+// UI
+// ============================================================================
+var $ = function(id){ return document.getElementById(id) };
+var esc = function(s){ return String(s).replace(/[&<>]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c] }) };
+var original = null, current = null;
+
+function parseBundle(text){
+  var b = JSON.parse(text);
+  var events = b.eventsJsonl
+    ? b.eventsJsonl.split('\n').filter(Boolean).map(function(l){ return JSON.parse(l) })
+    : (Array.isArray(b.events) ? b.events : null);
+  if (!events) throw new Error('no eventsJsonl or events array found');
+  return { meta: b, events: events };
+}
+
+async function render(){
+  var m = current.meta;
+  var r = await verifyChain(current.events, m.head);
+
+  // TRUNCATION is the case a naive chain walk misses. Removing the most recent
+  // events leaves a chain whose every remaining link is still correct — it is
+  // internally valid and externally a lie. The only thing that catches it is
+  // comparing the computed head against an independently recorded one: the
+  // bundle's claimed head here, a countersigned daily digest in production.
+  var truncated = m.head && r.ok && m.head !== r.head;
+
+  var verdict;
+  if (!r.ok) {
+    verdict = '<div class="verdict bad"><b>Chain broken at event ' + r.broken.at + '</b>' +
+      esc(r.broken.reason) + '<br><br>Events before this point remain verifiable. Everything from ' +
+      'here on cannot be trusted.</div>';
+  } else if (truncated) {
+    verdict = '<div class="verdict bad"><b>Events are missing from the end</b>' +
+      'All ' + r.rows.length + ' events present are individually valid and correctly linked — but the ' +
+      'chain stops earlier than it should.<br><br>' +
+      'Expected head <span class="mono">' + esc(m.head.slice(0,24)) + '…</span><br>' +
+      'Found head <span class="mono">' + esc(r.head.slice(0,24)) + '…</span><br><br>' +
+      'A truncated chain verifies perfectly on its own. Only comparing the head against an ' +
+      'independently recorded value reveals it — which is why production anchors a daily digest ' +
+      'externally.</div>';
+  } else {
+    verdict = '<div class="verdict ok"><b>Chain intact</b>' +
+      r.rows.length + ' events re-walked. Every hash was recomputed from its payload using this ' +
+      'browser\'s SHA-256 and an independently written canonicaliser. Nothing has been altered, ' +
+      'removed or reordered since it was written' +
+      (m.head ? ', and the head matches the value recorded in the bundle' : '') + '.</div>';
+  }
+
+  var checks = r.checks.map(function(c){
+    return '<div class="chk"><div class="mark ' + (c.ok?'ok':'bad') + '">' + (c.ok?'✓':'✕') + '</div>' +
+      '<div><div style="font-weight:600;color:var(--navy)">' + esc(c.label) + '</div>' +
+      '<div style="color:var(--grey);font-size:11.5px;margin-top:1px">' + esc(c.detail) + '</div></div></div>';
+  }).join('');
+
+  var rows = r.rows.map(function(x){
+    return '<tr class="' + (x.issue?'broken':'') + '">' +
+      '<td>' + esc(x.seq) + '</td>' +
+      '<td class="mono" style="font-size:11px">' + esc(x.type) + '</td>' +
+      '<td class="h">' + esc((x.hash||'').slice(0,24)) + '…</td>' +
+      '<td>' + (x.issue ? '<span style="color:var(--red);font-weight:600">' + esc(x.issue) + '</span>'
+                       : '<span style="color:var(--green)">verified</span>') + '</td></tr>';
+  }).join('');
+
+  $('out').innerHTML =
+    '<div class="card">' + verdict +
+      '<dl class="kv">' +
+        '<dt>Format</dt><dd>' + esc(m.format || 'unknown') + '</dd>' +
+        '<dt>Entity</dt><dd>' + esc(m.entity || '—') + '</dd>' +
+        '<dt>Canonicalization</dt><dd>' + esc(m.canonVersion || '—') + '</dd>' +
+        '<dt>Events</dt><dd>' + r.rows.length + '</dd>' +
+        '<dt>Head</dt><dd class="mono" style="font-size:10.5px">' + esc(r.head||'—') + '</dd>' +
+        (m.head && m.head !== r.head
+          ? '<dt style="color:var(--red)">Claimed head</dt><dd style="color:var(--red)" class="mono">' +
+            esc(m.head) + ' — does not match</dd>' : '') +
+      '</dl>' +
+      '<div class="note">Verified with <b>this browser\'s SHA-256</b> and a canonicaliser written ' +
+      'from the specification — not with Dovetail\'s. Two independent implementations agreeing is the ' +
+      'evidence. One implementation agreeing with itself is not.</div>' +
+    '</div>' +
+    '<div class="card"><h2>2 · What was checked</h2>' + checks + '</div>' +
+    '<div class="card"><h2>Events</h2><table><thead><tr><th>Seq</th><th>Type</th>' +
+      '<th>Hash</th><th>Result</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+
+  $('tamperCard').classList.remove('hide');
+}
+
+function load(text){
+  try {
+    current = parseBundle(text);
+    original = JSON.parse(JSON.stringify(current));
+    render();
+  } catch (e) {
+    $('out').innerHTML = '<div class="card"><div class="verdict bad"><b>Could not read that bundle</b>' +
+      esc(e.message) + '</div></div>';
+  }
+}
+
+$('drop').onclick = function(){ $('file').click() };
+$('file').onchange = function(e){
+  var f = e.target.files[0]; if (!f) return;
+  var rd = new FileReader(); rd.onload = function(){ load(rd.result) }; rd.readAsText(f);
+};
+['dragenter','dragover'].forEach(function(ev){
+  $('drop').addEventListener(ev, function(e){ e.preventDefault(); $('drop').classList.add('over') }) });
+['dragleave','drop'].forEach(function(ev){
+  $('drop').addEventListener(ev, function(e){ e.preventDefault(); $('drop').classList.remove('over') }) });
+$('drop').addEventListener('drop', function(e){
+  var f = e.dataTransfer.files[0]; if (!f) return;
+  var rd = new FileReader(); rd.onload = function(){ load(rd.result) }; rd.readAsText(f);
+});
+$('pasteBtn').onclick = function(){ $('pasteWrap').classList.toggle('hide') };
+$('loadPaste').onclick = function(){ load($('paste').value) };
+
+// --- tamper simulations ------------------------------------------------------
+function mid(){ return Math.min(2, current.events.length - 1) }
+$('tAmount').onclick = function(){
+  var i = mid(), e = current.events[i];
+  // Change one field in the payload. Nothing else is touched — no hash is
+  // updated — which is exactly what an attacker editing a database would do.
+  e.payload = Object.assign({}, e.payload, { amount: '99999.99' });
+  render();
+};
+$('tDelete').onclick = function(){ current.events.splice(mid(), 1); render() };
+$('tReorder').onclick = function(){
+  var i = mid(), t = current.events[i];
+  current.events[i] = current.events[i-1]; current.events[i-1] = t; render();
+};
+$('tTruncate').onclick = function(){ current.events = current.events.slice(0, mid()); render() };
+$('tRestore').onclick = function(){
+  current = JSON.parse(JSON.stringify(original)); render();
+};
+</script>
+</body>
+</html>
